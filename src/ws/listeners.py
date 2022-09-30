@@ -39,6 +39,12 @@ async def channel_append_listener(
                         if not (await client.web_client.users_info(user=member))["user"]["is_bot"]
                     ]
                 )
+
+                await client.web_client.chat_postEphemeral(
+                    text="Parsed all users to the daily bot :robot_face: ",
+                    channel=req.payload["channel_id"],
+                    user=req.payload["user_id"],
+                )
             else:
                 # Trash talk if bot is already in the channel
                 await client.web_client.chat_postEphemeral(
@@ -78,6 +84,12 @@ async def channel_pop_listener(
                         member for member in members_list["members"]
                         if not (await client.web_client.users_info(user=member))["user"]["is_bot"]
                     ]
+                )
+
+                await client.web_client.chat_postEphemeral(
+                    text="Parsed all users from the daily bot :skull_and_crossbones: ",
+                    channel=req.payload["channel_id"],
+                    user=req.payload["user_id"],
                 )
             else:
                 # Trash talk if bot is already left
