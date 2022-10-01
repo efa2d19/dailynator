@@ -19,10 +19,10 @@ async def channel_append_listener(
 
             # If where aren't channels or channel is not in the list - add channel to the list
             if (
-                    not await redis_instance.scard("channels")
-                    or req.payload["channel_id"].encode() not in await redis_instance.smembers("channels")
+                    not await redis_instance.llen("channels")
+                    or req.payload["channel_id"].encode() not in await redis_instance.lrange("channels", 0, -1)
             ):
-                await redis_instance.sadd("channels", req.payload["channel_id"])
+                await redis_instance.rpush("channels", req.payload["channel_id"])
 
                 await client.web_client.chat_postEphemeral(
                     text="Added channel to daily bot :blush: ",
@@ -32,7 +32,7 @@ async def channel_append_listener(
 
                 # Parse all members except for bots
                 members_list = await client.web_client.conversations_members(channel=req.payload["channel_id"])
-                await redis_instance.sadd(
+                await redis_instance.rpush(
                     "users",
                     *[
                         member for member in members_list["members"]
@@ -67,8 +67,8 @@ async def channel_pop_listener(
             await client.send_socket_mode_response(response)
 
             # If the channel is in the list - delete it from the list
-            if req.payload["channel_id"].encode() in await redis_instance.smembers("channels"):
-                await redis_instance.srem("channels", req.payload["channel_id"])
+            if req.payload["channel_id"].encode() in await redis_instance.lrange("channels", 0, -1):
+                await redis_instance.lrem("channels", 0, req.payload["channel_id"])
 
                 await client.web_client.chat_postEphemeral(
                     text="Deleted channel from daily bot :wave: ",
@@ -78,13 +78,13 @@ async def channel_pop_listener(
 
                 # Delete all members except for bots
                 members_list = await client.web_client.conversations_members(channel=req.payload["channel_id"])
-                await redis_instance.srem(
-                    "users",
-                    *[
-                        member for member in members_list["members"]
-                        if not (await client.web_client.users_info(user=member))["user"]["is_bot"]
-                    ]
-                )
+                for member in members_list["members"]:
+                    if not (await client.web_client.users_info(user=member))["user"]["is_bot"]:
+                        await redis_instance.lrem(
+                            "users",
+                            0,
+                            member,
+                        )
 
                 await client.web_client.chat_postEphemeral(
                     text="Parsed all users from the daily bot :skull_and_crossbones: ",
@@ -113,7 +113,7 @@ async def join_channel_listener(
             response = SocketModeResponse(envelope_id=req.envelope_id)
             await client.send_socket_mode_response(response)
 
-            await redis_instance.sadd("users", req.payload["event"]["user"])
+            await redis_instance.rpush("users", req.payload["event"]["user"])
 
             # Parse user's real_name and creator_id
             real_name = (
@@ -147,7 +147,7 @@ async def leave_channel_listener(
             response = SocketModeResponse(envelope_id=req.envelope_id)
             await client.send_socket_mode_response(response)
 
-            await redis_instance.srem("users", req.payload["event"]["user"])
+            await redis_instance.lrem("users", 0, req.payload["event"]["user"])
 
             # Parse user's real_name and creator_id
             real_name = (
@@ -185,7 +185,7 @@ async def refresh_users_listener(
 
             # Parse and refresh all users in the channel
             members_list = await client.web_client.conversations_members(channel=req.payload["channel_id"])
-            await redis_instance.sadd(
+            await redis_instance.rpush(
                 "users",
                 *[
                     member for member in members_list["members"]
@@ -213,7 +213,7 @@ async def questions_listener(
             response = SocketModeResponse(envelope_id=req.envelope_id)
             await client.send_socket_mode_response(response)
 
-            question_list = await redis_instance.smembers("questions")
+            question_list = await redis_instance.lrange("questions", 0, -1)
 
             if not len(question_list):
                 await client.web_client.chat_postEphemeral(
@@ -221,6 +221,7 @@ async def questions_listener(
                     channel=req.payload["channel_id"],
                     user=req.payload["user_id"],
                 )
+                return
 
             question_list_formatted = ""
             for idx, question in enumerate(question_list, start=1):
@@ -248,7 +249,7 @@ async def question_append_listener(
 
             # If user specified the question add it and notify the user
             if req.payload["text"]:
-                await redis_instance.sadd(
+                await redis_instance.rpush(
                     "questions",
                     req.payload["text"],
                 )
@@ -291,11 +292,12 @@ async def question_pop_listener(
                     )
                     return
 
-                question_list = await redis_instance.smembers("questions")
+                question_list = await redis_instance.lrange("questions", 0, -1)
                 for idx, question in enumerate(question_list, start=1):
                     if idx == int(req.payload["text"]):
-                        await redis_instance.srem(
+                        await redis_instance.lrem(
                             "questions",
+                            0,
                             question,
                         )
                         break
