@@ -1,10 +1,13 @@
+from typing import Sequence
+
+from slack_sdk.models.attachments import BlockAttachment
 from slack_sdk.web.async_client import AsyncWebClient
 
 
 async def post_report(
         app: AsyncWebClient,
         channel: str,
-        text: str,
+        attachments: Sequence[BlockAttachment],
         username: str,
         icon_url: str,
 ) -> None:
@@ -13,7 +16,7 @@ async def post_report(
 
     :param app: Async App instance
     :param channel: Channel id
-    :param text: Body of the report
+    :param attachments: Sequence of attachments
     :param username: Custom username
     :param icon_url: Custom icon url
     """
@@ -23,7 +26,7 @@ async def post_report(
     # Collect kwargs from params
     kwargs = dict()
     kwargs["channel"] = channel
-    kwargs["text"] = text
+    kwargs["attachments"] = attachments
     kwargs["username"] = username
     kwargs["icon_url"] = icon_url
     kwargs["icon_emoji"] = None
@@ -49,7 +52,7 @@ async def start_daily():
     user_list: list[str] = list(map(bytes.decode, await redis_instance.lrange("users", 0, -1)))
 
     # Get first question
-    first_question: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, 0)))
+    first_question: str = list(map(bytes.decode, await redis_instance.lrange("questions", 0, 0)))[0]
 
     for user in user_list:
         # Set user daily status
@@ -67,5 +70,5 @@ async def start_daily():
         # Send first question
         await app.client.chat_meMessage(
             channel=user_im_channel,
-            text=first_question[0],
+            text=first_question,
         )

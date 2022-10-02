@@ -1,7 +1,11 @@
+from email.policy import default
+
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from slack_sdk.web.async_client import AsyncWebClient
 
 from src.db import redis_instance
+
+default_colors = ["#e8aeb7", "#b8e1ff", "#3c7a89", "#f4d06f", "#82aba1"]
 
 
 async def parse_emoji_list(

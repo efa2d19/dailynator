@@ -1,11 +1,9 @@
 import asyncio
-import logging
 
-from cron_validator import CronValidator
-from slack_bolt.context.async_context import AsyncAck, AsyncSay, AsyncWebClient
+from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
-from src.db import redis_instance
 from main import app
+from src.db import redis_instance
 
 
 @app.command("/channel_append")
@@ -322,15 +320,15 @@ async def question_pop_listener(
 @app.command("/cron")
 async def cron_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
     # Validate user input
     try:
+        from cron_validator import CronValidator
+
         # Raise an exception if cron wasn't specified
         if not body["text"]:
             raise ValueError
@@ -384,7 +382,14 @@ async def im_listener(
     questions: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, -1)))
 
     # Get user's main channel
-    channel: str = await redis_instance.get(f"{message['user']}_channel")
+    channel: bytes | str = await redis_instance.get(f"{message['user']}_channel")
+
+    # Skip if there is no channel
+    if not channel:
+        return
+
+    # Decode channel
+    channel = channel.decode("utf-8")
 
     # Get user questions index
     user_idx = await redis_instance.get(f"{message['user']}_idx")
@@ -410,20 +415,41 @@ async def im_listener(
         user_info = (await client.users_info(user=message['user']))["user"]
 
         # Get user answers
-        user_answers = await redis_instance.lrange(f"{message['user']}_answers", 0, -1)
+        user_answers = list(map(bytes.decode, await redis_instance.lrange(f"{message['user']}_answers", 0, -1)))
 
         # Delete user's answers from Redis
         await redis_instance.delete(f"{message['user']}_answers")
 
         # Collect answers_block
-        answers_block = ""
+        attachments = list()
 
-        for question, answer in zip(questions, user_answers):
+        # Import color scheme
+        from src.utils import default_colors
+
+        # Update color scheme length if needed
+        if len(questions) > len(default_colors):
+            from math import ceil
+
+            default_colors = default_colors * ceil(len(questions) / len(default_colors))
+
+        for idx, (question, answer) in enumerate(zip(questions, user_answers)):
             # Check for skips in user answers
             if answer.lower() in ("-", "nil", "none", "null"):
                 continue
 
-            answers_block += f"**{question}**\n{answer.decode('utf-8')}\n"
+            from slack_sdk.models.blocks import HeaderBlock, MarkdownTextObject, SectionBlock
+            from slack_sdk.models.attachments import BlockAttachment
+
+            # Create attachments
+            attachments.append(
+                BlockAttachment(
+                    blocks=[
+                        HeaderBlock(text=question),
+                        SectionBlock(text=MarkdownTextObject(text=answer))
+                    ],
+                    color=default_colors[idx]
+                )
+            )
 
         from src.report import post_report
 
@@ -431,7 +457,7 @@ async def im_listener(
         await post_report(
             app=client,
             channel=channel,
-            text=answers_block,
+            attachments=attachments,
             username=user_info["real_name"],
             icon_url=user_info["profile"]["image_48"],
         )
