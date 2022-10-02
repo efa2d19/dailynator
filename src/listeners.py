@@ -1,5 +1,6 @@
 import logging
 
+from cron_validator import CronValidator
 from slack_bolt.context.async_context import AsyncAck, AsyncSay, AsyncWebClient
 
 from src.db import redis_instance
@@ -9,10 +10,8 @@ from main import app
 @app.command("/channel_append")
 async def channel_append_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
@@ -56,10 +55,8 @@ async def channel_append_listener(
 @app.command("/channel_pop")
 async def channel_pop_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
@@ -100,10 +97,8 @@ async def channel_pop_listener(
 @app.event("member_joined_channel")
 async def join_channel_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     if body["event"].get("subtype"):
         return
@@ -134,10 +129,8 @@ async def join_channel_listener(
 @app.event("member_left_channel")
 async def leave_channel_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     if body["event"].get("subtype"):
         return
@@ -168,10 +161,8 @@ async def leave_channel_listener(
 @app.command("/refresh_users")
 async def refresh_users_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
@@ -199,10 +190,8 @@ async def refresh_users_listener(
 @app.command("/questions")
 async def questions_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
@@ -231,10 +220,8 @@ async def questions_listener(
 @app.command("/question_append")
 async def question_append_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
@@ -263,18 +250,14 @@ async def question_append_listener(
 @app.command("/question_pop")
 async def question_pop_listener(
         ack: AsyncAck,
-        say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
-        logger: logging.Logger,
 ):
     await ack()
 
     # If user specified the question add it and notify the user
     if body["text"]:
-        try:
-            body["text"] = int(body["text"])
-        except ValueError:
+        if not body["text"].isdigit():
             await client.chat_postEphemeral(
                 text="Enter the index of the question you want to delete\nExample: `/question_pop 1` ",
                 channel=body["channel_id"],
@@ -307,14 +290,53 @@ async def question_pop_listener(
     )
 
 
-@app.event("message")
-async def im_listener(
+@app.command("/cron")
+async def cron_listener(
         ack: AsyncAck,
         say: AsyncSay,
         body: dict,
         client: AsyncWebClient,
         logger: logging.Logger,
-        context,
+):
+    await ack()
+
+    # Validate user input
+    try:
+        # Raise an exception if cron wasn't specified
+        if not body["text"]:
+            raise ValueError
+        CronValidator.parse(body["text"])
+    except ValueError:
+        await client.chat_postEphemeral(
+            text="Incorrect cron :cry: \nCheck the cron here\nhttps://crontab.guru/",
+            channel=body["channel_id"],
+            user=body["user_id"],
+        )
+        return
+
+    # Set specified cron to Redis
+    await redis_instance.set(
+        "cron",
+        body["text"],
+    )
+
+    from src.utils import start_cron
+
+    # Update CronTrigger in scheduler
+    await start_cron()
+
+    # Post notification on success
+    await client.chat_postEphemeral(
+        text="Cron was updated :zap: ",
+        channel=body["channel_id"],
+        user=body["user_id"],
+    )
+
+
+@app.event("message")
+async def im_listener(
+        ack: AsyncAck,
+        client: AsyncWebClient,
         message,
 ):
     await ack()
@@ -361,10 +383,17 @@ async def im_listener(
         # Get user answers
         user_answers = await redis_instance.lrange(f"{message['user']}_answers", 0, -1)
 
+        # Delete user's answers from Redis
+        await redis_instance.delete(f"{message['user']}_answers")
+
         # Collect answers_block
         answers_block = ""
 
         for question, answer in zip(questions, user_answers):
+            # Check for skips in user answers
+            if answer.lower() in ("-", "nil", "none", "null"):
+                continue
+
             answers_block += f"**{question}**\n{answer.decode('utf-8')}\n"
 
         from src.report import post_report

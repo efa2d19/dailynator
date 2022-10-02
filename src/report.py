@@ -55,6 +55,12 @@ async def start_daily():
         # Set user daily status
         await redis_instance.set(f"{user}_started", "1")
 
+        # Delete user's old idx
+        await redis_instance.delete(f"{user}_idx")
+
+        # Delete old user's answers from Redis
+        await redis_instance.delete(f"{user}_answers")
+
         # Get channel_id
         user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]
 
