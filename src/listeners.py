@@ -3,7 +3,7 @@ import logging
 from slack_bolt.context.async_context import AsyncAck, AsyncSay, AsyncWebClient
 
 from src.db import redis_instance
-from test2 import app
+from main import app
 
 
 @app.command("/channel_append")
@@ -320,8 +320,14 @@ async def im_listener(
     await ack()
 
     # Skip if daily wasn't started for the user
-    if not await redis_instance.get(f"{body['user_id']}_started"):
+    if not await redis_instance.get(f"{message['user']}_started"):
         return
+
+    # Write user's answer
+    await redis_instance.rpush(
+        f"{message['user']}_answers",
+        message["text"],
+    )
 
     # Get questions list
     questions: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, -1)))
@@ -330,28 +336,30 @@ async def im_listener(
     channel: list[str] = list(map(bytes.decode, await redis_instance.lrange("channels", 0, 0)))
 
     # Get user questions index
-    user_idx = await redis_instance.get(f"{body['user_id']}_idx")
+    user_idx = await redis_instance.get(f"{message['user']}_idx")
 
     # Set 0 if it's not set
     if not user_idx:
         user_idx = 1
+    else:
+        user_idx = int(user_idx)
 
     # Updated questions index
-    await redis_instance.set(f"{body['user_id']}_idx", user_idx + 1)
+    await redis_instance.set(f"{message['user']}_idx", str(user_idx + 1))
 
     # Update user's daily status if idx is out of range
-    if user_idx > len(questions):
+    if user_idx == len(questions):
         # Delete user's daily status
-        await redis_instance.delete(f"{body['user_id']}_started")
+        await redis_instance.delete(f"{message['user']}_started")
 
         # Delete user's idx
-        await redis_instance.delete(f"{body['user_id']}_idx")
+        await redis_instance.delete(f"{message['user']}_idx")
 
         # Get user info
-        user_info = (await client.users_info(user=body['user_id']))["user"]
+        user_info = (await client.users_info(user=message['user']))["user"]
 
         # Get user answers
-        user_answers = await redis_instance.lrange(f"{body['user_id']}_answers", 0, -1)
+        user_answers = await redis_instance.lrange(f"{message['user']}_answers", 0, -1)
 
         # Collect answers_block
         answers_block = ""
@@ -373,14 +381,8 @@ async def im_listener(
         # Exit
         return
 
-    # Write user's answer
-    await redis_instance.rpush(
-        f"{body['user_id']}_answers",
-        message["text"],
-    )
-
     # Send question
     await client.chat_meMessage(
-        channel=body["channel_id"],
+        channel=message["channel"],
         text=questions[user_idx]
     )

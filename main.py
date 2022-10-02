@@ -21,7 +21,7 @@ async def main():
     handler = AsyncSocketModeHandler(app=listeners.app)
 
     # Start server
-    handler = await handler.start_async()
+    await handler.start_async()
 
 
 if __name__ == "__main__":

@@ -39,3 +39,27 @@ async def post_report(
         kwargs["icon_emoji"] = choice(emoji_list)
 
     await app.chat_postMessage(**kwargs)
+
+
+async def start_daily():
+    from src.db import redis_instance
+    from main import app
+
+    # Get user_list
+    user_list: list[str] = list(map(bytes.decode, await redis_instance.lrange("users", 0, -1)))
+
+    # Get first question
+    first_question: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, 0)))
+
+    for user in user_list:
+        # Set user daily status
+        await redis_instance.set(f"{user}_started", "1")
+
+        # Get channel_id
+        user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]
+
+        # Send first question
+        await app.client.chat_meMessage(
+            channel=user_im_channel,
+            text=first_question[0],
+        )
