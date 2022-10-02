@@ -1,21 +1,15 @@
-import asyncio
-import logging
+from asyncio import run
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # TODO: remove when dockerfile is ready
 from logging import basicConfig, DEBUG
 
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
-from slack_bolt.context.ack.async_ack import AsyncAck
-from slack_bolt.context.say.async_say import AsyncSay
-from slack_sdk.web.async_client import AsyncWebClient
 
-from src.db import redis_instance
-from src.report import post_report
 
-basicConfig(level=DEBUG)
+basicConfig(level=DEBUG)  # TODO: change later
 
-load_dotenv()
+load_dotenv()  # TODO: remove when dockerfile is ready
 
 app = AsyncApp()
 
@@ -31,4 +25,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    run(main())

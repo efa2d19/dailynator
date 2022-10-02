@@ -15,12 +15,11 @@ load_dotenv()  # TODO: remove this when dockerfile is ready
 logging.basicConfig(level=logging.DEBUG if os.getenv("DEVELOPMENT") else logging.ERROR)
 
 
-web_client = AsyncWebClient(
-    token=os.environ.get("SLACK_BOT_TOKEN")  # xoxb-xxxx
-)
-
-
 async def main():
+    web_client = AsyncWebClient(
+        token=os.environ.get("SLACK_BOT_TOKEN")  # xoxb-xxxx
+    )
+
     main_client = SocketModeClient(
         app_token=os.getenv("SLACK_APP_TOKEN"),  # xapp-xxxx
         web_client=web_client,
@@ -37,7 +36,7 @@ async def main():
     main_client.socket_mode_request_listeners.append(question_pop_listener)
 
     # Start asking stuff
-    await dispatch_im_listeners(main_client)
+    await dispatch_im_listeners(main_client=main_client, web_client=web_client)
 
     # Establish a WebSocket connection to the Socket Mode servers
     await main_client.connect()
