@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from cron_validator import CronValidator
@@ -20,30 +21,46 @@ async def channel_append_listener(
             not await redis_instance.llen("channels")
             or body["channel_id"].encode() not in await redis_instance.lrange("channels", 0, -1)
     ):
-        await redis_instance.rpush("channels", body["channel_id"])
+        # Write channel to Redis
+        await redis_instance.set(f"channels", body["channel_id"])
 
+        # Post message on success
         await client.chat_postEphemeral(
             text="Added channel to daily bot :blush: ",
             channel=body["channel_id"],
             user=body["user_id"],
         )
 
-        # Parse all members except for bots
-        members_list = await client.conversations_members(channel=body["channel_id"])
+        # Parse all members except bots
+        members_list = [
+            member for member in (await client.conversations_members(channel=body["channel_id"]))["members"]
+            if not (await client.users_info(user=member))["user"]["is_bot"]
+        ]
+
+        # Update user_list
         await redis_instance.rpush(
             "users",
-            *[
-                member for member in members_list["members"]
-                if not (await client.users_info(user=member))["user"]["is_bot"]
-            ]
+            *members_list
         )
 
+        # Set main channel for every member
+        async_tasks = list()
+
+        for member in members_list:
+            async_tasks.append(
+                redis_instance.set(f"{member}_channel", body["channel_id"])
+            )
+
+        await asyncio.gather(*async_tasks)
+
+        # Post a message on success
         await client.chat_postEphemeral(
             text="Parsed all users to the daily bot :robot_face: ",
             channel=body["channel_id"],
             user=body["user_id"],
         )
         return
+
     # Trash talk if bot is already in the channel
     await client.chat_postEphemeral(
         text="I'm already here :japanese_goblin: ",
@@ -74,11 +91,7 @@ async def channel_pop_listener(
         members_list = await client.conversations_members(channel=body["channel_id"])
         for member in members_list["members"]:
             if not (await client.users_info(user=member))["user"]["is_bot"]:
-                await redis_instance.lrem(
-                    "users",
-                    0,
-                    member,
-                )
+                await redis_instance.lrem("users", 0, member,)
 
         await client.chat_postEphemeral(
             text="Deleted all users in the channel from the daily bot :skull_and_crossbones: ",
@@ -105,7 +118,11 @@ async def join_channel_listener(
 
     await ack()
 
+    # Add user to the user_list
     await redis_instance.rpush("users", body["event"]["user"])
+
+    # Set users main channel
+    await redis_instance.set(f"{body['event']['user']}_channel", body["event"]["channel"])
 
     # Parse user's real_name and creator_id
     real_name = (
@@ -170,14 +187,26 @@ async def refresh_users_listener(
     await redis_instance.delete("users")
 
     # Parse and refresh all users in the channel
-    members_list = await client.conversations_members(channel=body["channel_id"])
+    members_list = [
+        member for member in (await client.conversations_members(channel=body["channel_id"]))["members"]
+        if not (await client.users_info(user=member))["user"]["is_bot"]
+    ]
+
+    # Add users to user_list
     await redis_instance.rpush(
         "users",
-        *[
-            member for member in members_list["members"]
-            if not (await client.users_info(user=member))["user"]["is_bot"]
-        ]
+        *members_list
     )
+
+    # Set main channel for every member
+    async_tasks = list()
+
+    for member in members_list:
+        async_tasks.append(
+            redis_instance.set(f"{member}_channel", body["channel_id"])
+        )
+
+    await asyncio.gather(*async_tasks)
 
     # Notification to the user
     await client.chat_postEphemeral(
@@ -354,8 +383,8 @@ async def im_listener(
     # Get questions list
     questions: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, -1)))
 
-    # Get first channel from the channel list
-    channel: list[str] = list(map(bytes.decode, await redis_instance.lrange("channels", 0, 0)))
+    # Get user's main channel
+    channel: str = await redis_instance.get(f"{message['user']}_channel")
 
     # Get user questions index
     user_idx = await redis_instance.get(f"{message['user']}_idx")
@@ -401,7 +430,7 @@ async def im_listener(
         # Send report
         await post_report(
             app=client,
-            channel=channel[0],
+            channel=channel,
             text=answers_block,
             username=user_info["real_name"],
             icon_url=user_info["profile"]["image_48"],
