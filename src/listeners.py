@@ -1,9 +1,6 @@
-import asyncio
-
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
 from main import app
-from src.db import redis_instance
 
 
 @app.command("/channel_append")
@@ -11,16 +8,19 @@ async def channel_append_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
-):
+) -> None:
     await ack()
 
     # If where aren't channels or channel is not in the list - add channel to the list
+    from src.db import get_all_channels, create_user, add_channel
+
+    all_channels = get_all_channels()
     if (
-            not await redis_instance.llen("channels")
-            or body["channel_id"].encode() not in await redis_instance.lrange("channels", 0, -1)
+            not all_channels
+            or body["channel_id"] not in all_channels
     ):
         # Write channel to Redis
-        await redis_instance.set(f"channels", body["channel_id"])
+        add_channel(body["channel_id"])
 
         # Post message on success
         await client.chat_postEphemeral(
@@ -35,21 +35,14 @@ async def channel_append_listener(
             if not (await client.users_info(user=member))["user"]["is_bot"]
         ]
 
-        # Update user_list
-        await redis_instance.rpush(
-            "users",
-            *members_list
-        )
-
-        # Set main channel for every member
-        async_tasks = list()
-
-        for member in members_list:
-            async_tasks.append(
-                redis_instance.set(f"{member}_channel", body["channel_id"])
+        # Parse user to db
+        for user in members_list:
+            create_user(
+                user_id=user,
+                daily_status=False,
+                q_idx=0,
+                main_channel_id=body["channel_id"],
             )
-
-        await asyncio.gather(*async_tasks)
 
         # Post a message on success
         await client.chat_postEphemeral(
@@ -75,9 +68,11 @@ async def channel_pop_listener(
 ):
     await ack()
 
+    from src.db import get_all_channels, delete_channel, delete_users_by_main_channel
+
     # If the channel is in the list - delete it from the list
-    if body["channel_id"].encode() in await redis_instance.lrange("channels", 0, -1):
-        await redis_instance.lrem("channels", 0, body["channel_id"])
+    if body["channel_id"] in get_all_channels():
+        delete_channel(body["channel_id"])
 
         await client.chat_postEphemeral(
             text="Deleted channel from daily bot :wave: ",
@@ -86,10 +81,7 @@ async def channel_pop_listener(
         )
 
         # Delete all members except for bots
-        members_list = await client.conversations_members(channel=body["channel_id"])
-        for member in members_list["members"]:
-            if not (await client.users_info(user=member))["user"]["is_bot"]:
-                await redis_instance.lrem("users", 0, member,)
+        delete_users_by_main_channel(body["channel_id"])
 
         await client.chat_postEphemeral(
             text="Deleted all users in the channel from the daily bot :skull_and_crossbones: ",
@@ -116,11 +108,15 @@ async def join_channel_listener(
 
     await ack()
 
-    # Add user to the user_list
-    await redis_instance.rpush("users", body["event"]["user"])
+    from src.db import create_user
 
-    # Set users main channel
-    await redis_instance.set(f"{body['event']['user']}_channel", body["event"]["channel"])
+    # Add user to the user_list
+    create_user(
+        user_id=body["event"]["user"],
+        daily_status=False,
+        q_idx=0,
+        main_channel_id=body["event"]["channel"],
+    )
 
     # Parse user's real_name and creator_id
     real_name = (
@@ -152,7 +148,9 @@ async def leave_channel_listener(
 
     await ack()
 
-    await redis_instance.lrem("users", 0, body["event"]["user"])
+    from src.db import delete_user
+
+    delete_user(body["event"]["user"])
 
     # Parse user's real_name and creator_id
     real_name = (
@@ -182,7 +180,8 @@ async def refresh_users_listener(
     await ack()
 
     # Delete set users
-    await redis_instance.delete("users")
+    from src.db import delete_users_by_main_channel
+    delete_users_by_main_channel(body["channel_id"])
 
     # Parse and refresh all users in the channel
     members_list = [
@@ -190,21 +189,15 @@ async def refresh_users_listener(
         if not (await client.users_info(user=member))["user"]["is_bot"]
     ]
 
-    # Add users to user_list
-    await redis_instance.rpush(
-        "users",
-        *members_list
-    )
-
-    # Set main channel for every member
-    async_tasks = list()
-
-    for member in members_list:
-        async_tasks.append(
-            redis_instance.set(f"{member}_channel", body["channel_id"])
+    # Parse user to db
+    from src.db import create_user
+    for user in members_list:
+        create_user(
+            user_id=user,
+            daily_status=False,
+            q_idx=0,
+            main_channel_id=body["channel_id"],
         )
-
-    await asyncio.gather(*async_tasks)
 
     # Notification to the user
     await client.chat_postEphemeral(
@@ -222,7 +215,8 @@ async def questions_listener(
 ):
     await ack()
 
-    question_list = await redis_instance.lrange("questions", 0, -1)
+    from src.db import get_all_questions
+    question_list = get_all_questions()
 
     if not len(question_list):
         await client.chat_postEphemeral(
@@ -234,7 +228,7 @@ async def questions_listener(
 
     question_list_formatted = ""
     for idx, question in enumerate(question_list, start=1):
-        question_list_formatted += f"{idx}.  {question.decode('utf-8')}.\n"
+        question_list_formatted += f"{idx}.  {question}.\n"
 
     # Send user list to user
     await client.chat_postEphemeral(
@@ -252,12 +246,11 @@ async def question_append_listener(
 ):
     await ack()
 
+    from src.db import add_question
+
     # If user specified the question add it and notify the user
     if body["text"]:
-        await redis_instance.rpush(
-            "questions",
-            body["text"],
-        )
+        add_question(body["text"])
 
         await client.chat_postEphemeral(
             text="Your question has been added to the daily bot :zap: ",
@@ -282,6 +275,8 @@ async def question_pop_listener(
 ):
     await ack()
 
+    from src.db import delete_question
+
     # If user specified the question add it and notify the user
     if body["text"]:
         if not body["text"].isdigit():
@@ -292,15 +287,7 @@ async def question_pop_listener(
             )
             return
 
-        question_list = await redis_instance.lrange("questions", 0, -1)
-        for idx, question in enumerate(question_list, start=1):
-            if idx == int(body["text"]):
-                await redis_instance.lrem(
-                    "questions",
-                    0,
-                    question,
-                )
-                break
+        delete_question(int(body["text"]))
 
         await client.chat_postEphemeral(
             text="Your question has been removed from the daily bot :zap: ",
@@ -341,10 +328,12 @@ async def cron_listener(
         )
         return
 
-    # Set specified cron to Redis
-    await redis_instance.set(
-        "cron",
-        body["text"],
+    from src.db import add_channel
+
+    # Set specified cron to current channel
+    add_channel(
+        channel_id=body["channel_id"],
+        cron=body["text"],
     )
 
     from src.utils import start_cron
@@ -369,56 +358,62 @@ async def im_listener(
     await ack()
 
     # Skip if daily wasn't started for the user
-    if not await redis_instance.get(f"{message['user']}_started"):
+    from src.db import get_user_status, get_user_answers, set_user_answer, get_user_q_idx
+    from src.db import create_user, get_all_questions, get_user_main_channel, delete_user_answers
+
+    if not get_user_status(user_id=message['user']):
         return
-
-    # Write user's answer
-    await redis_instance.rpush(
-        f"{message['user']}_answers",
-        message["text"],
-    )
-
-    # Get questions list
-    questions: list[str] = list(map(bytes.decode, await redis_instance.lrange("questions", 0, -1)))
-
-    # Get user's main channel
-    channel: bytes | str = await redis_instance.get(f"{message['user']}_channel")
-
-    # Skip if there is no channel
-    if not channel:
-        return
-
-    # Decode channel
-    channel = channel.decode("utf-8")
 
     # Get user questions index
-    user_idx = await redis_instance.get(f"{message['user']}_idx")
+    user_idx = get_user_q_idx(message['user'])
+
+    # Write user's answer
+    set_user_answer(
+        user_id=message['user'],
+        question_id=user_idx,
+        answer=message["text"],
+    )
 
     # Set 0 if it's not set
     if not user_idx:
         user_idx = 1
-    else:
-        user_idx = int(user_idx)
+
+    # Get questions list
+    questions: list[str, str] = get_all_questions()
+    questions_length: int = len(questions)
+
+    user_main_channel = get_user_main_channel(user_id=message["user"])
 
     # Updated questions index
-    await redis_instance.set(f"{message['user']}_idx", str(user_idx + 1))
+    create_user(
+        user_id=message['user'],
+        daily_status=True,
+        q_idx=user_idx + 1,
+        main_channel_id=user_main_channel,
+    )
 
     # Update user's daily status if idx is out of range
-    if user_idx == len(questions):
-        # Delete user's daily status
-        await redis_instance.delete(f"{message['user']}_started")
-
-        # Delete user's idx
-        await redis_instance.delete(f"{message['user']}_idx")
+    if user_idx == questions_length:
+        # Delete user's daily status & idx
+        create_user(
+            user_id=message['user'],
+            daily_status=False,
+            q_idx=0,
+            main_channel_id=user_main_channel,
+        )
 
         # Get user info
         user_info = (await client.users_info(user=message['user']))["user"]
 
         # Get user answers
-        user_answers = list(map(bytes.decode, await redis_instance.lrange(f"{message['user']}_answers", 0, -1)))
+        user_answers = get_user_answers(user_id=message['user'])
+
+        # Skip if there is no channel
+        if not user_main_channel:
+            return
 
         # Delete user's answers from Redis
-        await redis_instance.delete(f"{message['user']}_answers")
+        delete_user_answers(user_id=message['user'])
 
         # Collect answers_block
         attachments = list()
@@ -427,14 +422,14 @@ async def im_listener(
         from src.utils import default_colors
 
         # Update color scheme length if needed
-        if len(questions) > len(default_colors):
+        if questions_length > len(default_colors):
             from math import ceil
 
-            default_colors = default_colors * ceil(len(questions) / len(default_colors))
+            default_colors = default_colors * ceil(questions_length / len(default_colors))
 
-        for idx, (question, answer) in enumerate(zip(questions, user_answers)):
+        for idx, user_set in enumerate(user_answers):
             # Check for skips in user answers
-            if answer.lower() in ("-", "nil", "none", "null"):
+            if user_set["answer"].lower() in ("-", "nil", "none", "null"):
                 continue
 
             from slack_sdk.models.blocks import HeaderBlock, MarkdownTextObject, SectionBlock
@@ -444,8 +439,8 @@ async def im_listener(
             attachments.append(
                 BlockAttachment(
                     blocks=[
-                        HeaderBlock(text=question),
-                        SectionBlock(text=MarkdownTextObject(text=answer))
+                        HeaderBlock(text=user_set["question"]),
+                        SectionBlock(text=MarkdownTextObject(text=user_set["answer"]))
                     ],
                     color=default_colors[idx]
                 )
@@ -456,7 +451,7 @@ async def im_listener(
         # Send report
         await post_report(
             app=client,
-            channel=channel,
+            channel=user_main_channel,
             attachments=attachments,
             username=user_info["real_name"],
             icon_url=user_info["profile"]["image_48"],
