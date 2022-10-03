@@ -44,12 +44,14 @@ async def post_report(
     await app.chat_postMessage(**kwargs)
 
 
-async def start_daily():
-    from src.db import get_all_users, get_all_questions, delete_user_answers, create_user, get_user_main_channel
+async def start_daily(
+        channel_id: str,
+) -> None:
+    from src.db import get_all_users_by_channel_id, get_all_questions, delete_user_answers, create_user, get_user_main_channel
     from main import app
 
     # Get user_list
-    user_list: list[str, str] = get_all_users()
+    user_list: list[str, str] = get_all_users_by_channel_id(channel_id)
 
     # Get first question
     first_question: str = get_all_questions()[0]

@@ -21,17 +21,18 @@ async def parse_emoji_list(
 async def start_cron():
     from apscheduler.triggers.cron import CronTrigger
     from main import scheduler
+    from functools import partial
 
     from src.report import start_daily
-    from src.db import get_all_cron
+    from src.db import get_all_cron_with_channels
 
     # Get current cron as str
-    cron_list = get_all_cron()
+    cron_list = get_all_cron_with_channels()
 
     # Remove all existing triggers
     scheduler.remove_all_jobs()
 
-    for idx, cron in enumerate(cron_list):
+    for channel_id, cron in cron_list:
 
         # Split cron
         split_cron = cron.split(" ")
@@ -47,9 +48,9 @@ async def start_cron():
 
         # Schedule a job
         scheduler.add_job(
-            func=start_daily,
+            func=partial(start_daily, channel_id=channel_id),
             trigger=cron_trigger,
-            name=f"start_daily_{idx}"
+            name=f"start_daily_{channel_id}"
         )
 
     # Start Async scheduler

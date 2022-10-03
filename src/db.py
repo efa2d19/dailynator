@@ -152,11 +152,11 @@ def get_all_questions() -> list[str, str]:
         "SELECT * FROM questions"
     )
     # Fetch all
-    channels = cursor.fetchall()
+    questions = cursor.fetchall()
     # Close the cursor
     cursor.close()
     # Return concatenated list
-    return list(chain(*channels))
+    return list(chain(*questions))
 
 
 def add_channel(
@@ -220,28 +220,31 @@ def delete_channel(
     cursor.close()
 
 
-def get_all_users() -> list[str, str]:
+def get_all_users_by_channel_id(
+        channel_id: str,
+) -> list[str, str]:
     from itertools import chain
 
     # Get stuff
     cursor = db.cursor()
     cursor.execute(
-        "SELECT user_id FROM users"
+        "SELECT user_id FROM users WHERE main_channel_id = ?",
+        [channel_id],
     )
-    # Commit
+    # Fetch
     users = cursor.fetchall()
     # Close the cursor
     cursor.close()
     return list(chain(*users))
 
 
-def get_all_cron():
+def get_all_cron_with_channels():
     from itertools import chain
 
     # Get stuff
     cursor = db.cursor()
     cursor.execute(
-        "SELECT cron FROM channels"
+        "SELECT channel_id, cron  FROM channels"
     )
     # Commit
     cron_list = cursor.fetchall()
