@@ -47,21 +47,25 @@ async def post_report(
 async def start_daily(
         channel_id: str,
 ) -> None:
-    from src.db import get_all_users_by_channel_id, get_all_questions, delete_user_answers, create_user, get_user_main_channel
     from main import app
+    from src.db import Database
+    from src.block_kit import start_daily_block
+
+    db = Database()
+    await db.connect()
 
     # Get user_list
-    user_list: list[str, str] = get_all_users_by_channel_id(channel_id)
+    user_list: list[str, str] = await db.get_all_users_by_channel_id(channel_id=channel_id)
 
     # Get first question
-    first_question: str = get_all_questions()[0]
+    first_question: str = (await db.get_all_questions())[0]
 
     for user in user_list:
         # Get users main channel
-        user_main_channel = get_user_main_channel(user_id=user)
+        user_main_channel = await db.get_user_main_channel(user_id=user)
 
         # Set user daily status & delete user's old idx
-        create_user(
+        await db.create_user(
             user_id=user,
             daily_status=True,
             q_idx=1,
@@ -69,18 +73,19 @@ async def start_daily(
         )
 
         # Delete old user's answers from Redis
-        delete_user_answers(user_id=user)
+        await db.delete_user_answers(user_id=user)
 
         # Get channel_id
         user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]
 
-        # Send first question
-        from src.block_kit import start_daily_block
+        # Get user info
+        user_info = (await app.client.users_info(user=user))["user"]
 
+        # Send first question
         await app.client.chat_postMessage(
             channel=user_im_channel,
             blocks=start_daily_block(
-                header_text=f"Hey, <real_name_here>! :sun_with_face: ",  # TODO: add real name
+                header_text=f"Hey, {user_info['real_name']}! :sun_with_face: ",
                 body_text="Daily time has come :melting_face: ",
                 first_question=first_question
             ),
