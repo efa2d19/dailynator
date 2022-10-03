@@ -27,7 +27,7 @@ def create_user(
 ) -> None:
     cursor = db.cursor()
     cursor.execute(
-        "INSERT or UPDATE INTO users (user_id, daily_status, q_idx, main_channel_id) VALUES (?,?,?,?)",
+        "INSERT OR REPLACE INTO users (user_id, daily_status, q_idx, main_channel_id) VALUES (?, ?, ?, ?)",
         [user_id, daily_status, q_idx, main_channel_id],
     )
     db.commit()
@@ -44,7 +44,7 @@ def get_user_status(
     )
     user_status = cursor.fetchone()
     cursor.close()
-    return bool(user_status)
+    return bool(user_status[0])
 
 
 def get_user_main_channel(
@@ -57,7 +57,7 @@ def get_user_main_channel(
     )
     user_channel = cursor.fetchone()
     cursor.close()
-    return user_channel
+    return user_channel[0]
 
 
 def get_user_q_idx(
@@ -70,7 +70,7 @@ def get_user_q_idx(
     )
     user_status = cursor.fetchone()
     cursor.close()
-    return user_status
+    return user_status[0]
 
 
 def get_user_answers(
@@ -79,7 +79,7 @@ def get_user_answers(
     cursor = db.cursor()
     cursor.execute(
         "SELECT body, answer FROM answers "
-        "LEFT JOIN questions ON answers.question_id = questions.ROWID"
+        "LEFT JOIN questions ON answers.question_id = questions.ROWID "
         "WHERE user_id = ?",
         [user_id],
     )
@@ -94,7 +94,7 @@ def delete_user_answers(
 ) -> None:
     cursor = db.cursor()
     cursor.execute(
-        "DELETE FROM answers WHERE user_id = ?"
+        "DELETE FROM answers WHERE user_id = ?",
         [user_id],
     )
     db.commit()
@@ -108,7 +108,7 @@ def set_user_answer(
 ) -> None:
     cursor = db.cursor()
     cursor.execute(
-        "INSERT INTO answer (user_id, question_id, answer) VALUES (?, ?, ?)",
+        "INSERT INTO answers (user_id, question_id, answer) VALUES (?, ?, ?)",
         [user_id, question_id, answer]
     )
     db.commit()
@@ -166,7 +166,7 @@ def add_channel(
     # Get stuff
     cursor = db.cursor()
     cursor.execute(
-        "INSERT or UPDATE INTO channels (channel_id, cron) VALUES (?, ?)",
+        "INSERT OR REPLACE INTO channels (channel_id, cron) VALUES (?, ?)",
         [channel_id, cron],
     )
     # Commit
@@ -181,7 +181,7 @@ def add_question(
     # Get stuff
     cursor = db.cursor()
     cursor.execute(
-        "INSERT or UPDATE INTO questions (body) VALUES (?)",
+        "INSERT OR REPLACE INTO questions (body) VALUES (?)",
         [question],
     )
     # Commit
@@ -218,6 +218,36 @@ def delete_channel(
     db.commit()
     # Close the cursor
     cursor.close()
+
+
+def get_all_users() -> list[str, str]:
+    from itertools import chain
+
+    # Get stuff
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT user_id FROM users"
+    )
+    # Commit
+    users = cursor.fetchall()
+    # Close the cursor
+    cursor.close()
+    return list(chain(*users))
+
+
+def get_all_cron():
+    from itertools import chain
+
+    # Get stuff
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT cron FROM channels"
+    )
+    # Commit
+    cron_list = cursor.fetchall()
+    # Close the cursor
+    cursor.close()
+    return list(chain(*cron_list))
 
 
 if __name__ == "__main__":

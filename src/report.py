@@ -45,24 +45,29 @@ async def post_report(
 
 
 async def start_daily():
-    from src.db import redis_instance
+    from src.db import get_all_users, get_all_questions, delete_user_answers, create_user, get_user_main_channel
     from main import app
 
     # Get user_list
-    user_list: list[str] = list(map(bytes.decode, await redis_instance.lrange("users", 0, -1)))
+    user_list: list[str, str] = get_all_users()
 
     # Get first question
-    first_question: str = list(map(bytes.decode, await redis_instance.lrange("questions", 0, 0)))[0]
+    first_question: str = get_all_questions()[0]
 
     for user in user_list:
-        # Set user daily status
-        await redis_instance.set(f"{user}_started", "1")
+        # Get users main channel
+        user_main_channel = get_user_main_channel(user_id=user)
 
-        # Delete user's old idx
-        await redis_instance.delete(f"{user}_idx")
+        # Set user daily status & delete user's old idx
+        create_user(
+            user_id=user,
+            daily_status=True,
+            q_idx=1,
+            main_channel_id=user_main_channel,
+        )
 
         # Delete old user's answers from Redis
-        await redis_instance.delete(f"{user}_answers")
+        delete_user_answers(user_id=user)
 
         # Get channel_id
         user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]

@@ -19,7 +19,7 @@ async def channel_append_listener(
             not all_channels
             or body["channel_id"] not in all_channels
     ):
-        # Write channel to Redis
+        # Write channel
         add_channel(body["channel_id"])
 
         # Post message on success
