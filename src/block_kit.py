@@ -18,7 +18,11 @@ def report_attachment_block(
     return BlockAttachment(
         blocks=[
             HeaderBlock(text=header_text),
-            SectionBlock(text=MarkdownTextObject(text=body_text))
+            SectionBlock(
+                text=MarkdownTextObject(
+                    text=body_text,
+                )
+            )
         ],
         color=color
     )
@@ -28,7 +32,7 @@ def start_daily_block(
         header_text: str,
         body_text: str,
         first_question: str,
-) -> Sequence[Block, Block]:
+) -> Sequence[Block]:
     return [
         ContextBlock(
             elements=[
@@ -38,11 +42,15 @@ def start_daily_block(
             ]
         ),
         DividerBlock(),
-        MarkdownTextObject(
-            text=body_text,
+        SectionBlock(
+            text=MarkdownTextObject(
+                text=body_text,
+            )
         ),
-        MarkdownTextObject(
-            text=first_question,
+        SectionBlock(
+            text=MarkdownTextObject(
+                text=">" + first_question,
+            )
         ),
     ]
 
@@ -50,14 +58,18 @@ def start_daily_block(
 def end_daily_block(
         start_body_text: str,
         end_body_text: str,
-) -> Sequence[Block, Block]:
+) -> Sequence[Block]:
     # TODO add link to the channel here
     return [
-        MarkdownTextObject(
-            text=start_body_text,
+        SectionBlock(
+            text=MarkdownTextObject(
+                text=start_body_text,
+            )
         ),
-        MarkdownTextObject(
-            text=end_body_text,
+        SectionBlock(
+            text=MarkdownTextObject(
+                text=end_body_text,
+            )
         ),
         DividerBlock()
     ]
@@ -65,10 +77,10 @@ def end_daily_block(
 
 def question_list_block(
         question_list: list[str, str],
-) -> Sequence[Block, Block]:
+) -> Sequence[Block]:
     field_list = list()
 
-    for idx, question in enumerate(question_list):
+    for idx, question in enumerate(question_list, start=1):
         field_list.append(
             MarkdownTextObject(
                 text=f"{idx}.\t{question}",
@@ -89,10 +101,10 @@ def question_list_block(
 def error_block(
         header_text: str,
         body_text: str,
-) -> Sequence[Block, Block]:
+) -> Sequence[Block]:
     return [
         HeaderBlock(
-            text=":x:" + header_text,
+            text=":x:\t" + header_text,
         ),
         DividerBlock(),
         SectionBlock(
@@ -107,10 +119,10 @@ def error_block(
 
 def success_block(
         header_text: str,
-) -> Sequence[Block, Block]:
+) -> Sequence[Block]:
     return [
         HeaderBlock(
-            text=":white_check_mark:" + header_text,
+            text=":white_check_mark:\t" + header_text,
         ),
         DividerBlock(),
     ]

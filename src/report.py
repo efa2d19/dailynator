@@ -86,7 +86,7 @@ async def start_daily(
             channel=user_im_channel,
             blocks=start_daily_block(
                 header_text=f"Hey, {user_info['real_name']}! :sun_with_face: ",
-                body_text="Daily time has come :melting_face: ",
+                body_text="*Daily time has come* :melting_face: ",
                 first_question=first_question
             ),
         )

@@ -310,7 +310,7 @@ async def question_append_listener(
     await client.chat_postEphemeral(
         blocks=error_block(
             header_text="Question wasn't entered",
-            body_text="Enter the question after the command\nExample: `/question_append How are you doing`",
+            body_text="Enter the question after the command\nExample: `/question_append <your_question>`",
         ),
         channel=body["channel_id"],
         user=body["user_id"],
@@ -534,7 +534,7 @@ async def im_listener(
             channel=body["event"]["channel"],
             blocks=end_daily_block(
                 start_body_text=f"Thanks, {user_info['real_name']}!",
-                end_body_text="",
+                end_body_text="Have a wonderful and productive day :four_leaf_clover: ",
             ),
         )
 
@@ -544,6 +544,7 @@ async def im_listener(
     # Send question to dm
     await client.chat_postMessage(
         channel=message["channel"],
-        text=questions[user_idx],
+        text=">" + questions[user_idx],
         mrkdwn=True,  # Enable markdown
     )
+# TODO: add thread listener
