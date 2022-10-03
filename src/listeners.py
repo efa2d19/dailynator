@@ -354,15 +354,26 @@ async def im_listener(
         ack: AsyncAck,
         client: AsyncWebClient,
         message,
+        body,
 ):
     await ack()
 
     # Skip if daily wasn't started for the user
-    from src.db import get_user_status, get_user_answers, set_user_answer, get_user_q_idx
-    from src.db import create_user, get_all_questions, get_user_main_channel, delete_user_answers
+    from src.db import get_user_status
 
     if not get_user_status(user_id=message['user']):
         return
+
+    # Import DB queries
+    from src.db import get_user_answers, set_user_answer, get_user_q_idx
+    from src.db import create_user, get_all_questions, get_user_main_channel, delete_user_answers
+
+    # Import color scheme
+    from src.utils import default_colors
+
+    # Import block kit & post_report
+    from src.block_kit import report_attachment_block, end_daily_block
+    from src.report import post_report
 
     # Get user questions index
     user_idx = get_user_q_idx(message['user'])
@@ -418,9 +429,6 @@ async def im_listener(
         # Collect answers_block
         attachments = list()
 
-        # Import color scheme
-        from src.utils import default_colors
-
         # Update color scheme length if needed
         if questions_length > len(default_colors):
             from math import ceil
@@ -432,21 +440,14 @@ async def im_listener(
             if user_set["answer"].lower() in ("-", "nil", "none", "null"):
                 continue
 
-            from slack_sdk.models.blocks import HeaderBlock, MarkdownTextObject, SectionBlock
-            from slack_sdk.models.attachments import BlockAttachment
-
             # Create attachments
             attachments.append(
-                BlockAttachment(
-                    blocks=[
-                        HeaderBlock(text=user_set["question"]),
-                        SectionBlock(text=MarkdownTextObject(text=user_set["answer"]))
-                    ],
-                    color=default_colors[idx]
+                report_attachment_block(
+                    header_text=user_set["question"],
+                    body_text=user_set["answer"],
+                    color=default_colors[idx],
                 )
             )
-
-        from src.report import post_report
 
         # Send report
         await post_report(
@@ -457,11 +458,21 @@ async def im_listener(
             icon_url=user_info["profile"]["image_48"],
         )
 
+        # Send notification to the user
+        await client.chat_postMessage(
+            channel=body["event"]["channel"],
+            blocks=end_daily_block(
+                start_body_text=f"Thanks, {user_info['real_name']}!",
+                end_body_text="",
+            ),
+        )
+
         # Exit
         return
 
-    # Send question
-    await client.chat_meMessage(
+    # Send question to dm
+    await client.chat_postMessage(
         channel=message["channel"],
-        text=questions[user_idx]
+        text=questions[user_idx],
+        mrkdwn=True,  # Enable markdown
     )

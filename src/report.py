@@ -37,7 +37,7 @@ async def post_report(
         from random import choice
 
         # Parse emoji list
-        emoji_list = await parse_emoji_list(app)
+        emoji_list = await parse_emoji_list(app=app)
         # Choose random emoji
         kwargs["icon_emoji"] = choice(emoji_list)
 
@@ -75,7 +75,13 @@ async def start_daily(
         user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]
 
         # Send first question
-        await app.client.chat_meMessage(
+        from src.block_kit import start_daily_block
+
+        await app.client.chat_postMessage(
             channel=user_im_channel,
-            text=first_question,
+            blocks=start_daily_block(
+                header_text=f"Hey, <real_name_here>! :sun_with_face: ",  # TODO: add real name
+                body_text="Daily time has come :melting_face: ",
+                first_question=first_question
+            ),
         )

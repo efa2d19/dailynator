@@ -48,7 +48,7 @@ async def start_cron():
 
         # Schedule a job
         scheduler.add_job(
-            func=partial(start_daily, channel_id=channel_id),
+            func=partial(start_daily, channel_id=channel_id),  # Supply channel_id to start_daily
             trigger=cron_trigger,
             name=f"start_daily_{channel_id}"
         )
