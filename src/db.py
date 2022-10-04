@@ -1,6 +1,6 @@
 from typing import Optional
 
-import aiosqlite
+from aiosqlite import connect, Connection
 
 
 class Borg:
@@ -11,28 +11,27 @@ class Borg:
 
 
 class Database(Borg):
+    db: Connection
+
     def __init__(
             self,
-            db: Optional[aiosqlite.Connection] = None
+            db: Optional[Connection] = None,
     ) -> None:
         super().__init__()
         if db:
-            self.__db = db
+            self.db = db
         else:
-            if not hasattr(self, "__db"):
-                self.__db = None
-
-    def __str__(
-            self
-    ) -> str:
-        return self.__db
+            if not hasattr(self, "db"):
+                self.db = None  # noqa
 
     async def connect(self) -> None:
         """
         Establish a connection to the database if not already established
         """
-        if self.__db is None:
-            self.__db = await aiosqlite.connect(database="daily.db")
+        if self.db is None:
+            self.db = await connect(
+                database="daily.db",
+            )
 
     async def delete_users_by_main_channel(
             self,
@@ -44,12 +43,12 @@ class Database(Borg):
         :param channel_id: Users main_channel_id
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "DELETE FROM users WHERE main_channel_id = ?",
             [channel_id],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def create_user(
@@ -58,6 +57,7 @@ class Database(Borg):
             daily_status: bool,
             q_idx: int,
             main_channel_id: str,
+            real_name: str,
     ) -> None:
         """
         Creates or updates user entity
@@ -66,14 +66,15 @@ class Database(Borg):
         :param daily_status: Has daily started for the user or not
         :param q_idx: Current question of the user (Default: 0; if daily has started: 1)
         :param main_channel_id: User's daily channel (user can't be in multiple daily channels)
+        :param real_name: User's real name
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
-            "INSERT OR REPLACE INTO users (user_id, daily_status, q_idx, main_channel_id) VALUES (?, ?, ?, ?)",
-            [user_id, daily_status, q_idx, main_channel_id],
+            "INSERT OR REPLACE INTO users (user_id, daily_status, q_idx, main_channel_id, real_name) VALUES (?, ?, ?, ?, ?)",  # noqa
+            [user_id, daily_status, q_idx, main_channel_id, real_name],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def get_user_status(
@@ -87,7 +88,7 @@ class Database(Borg):
         :return: Has daily started or not as a bool
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT daily_status FROM users WHERE user_id = ?",
             [user_id],
@@ -107,7 +108,7 @@ class Database(Borg):
         :return: Channel id of user's main channel
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT main_channel_id FROM users WHERE user_id = ?",
             [user_id],
@@ -127,7 +128,7 @@ class Database(Borg):
         :return: Question index as an int
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT q_idx FROM users WHERE user_id = ?",
             [user_id],
@@ -147,7 +148,7 @@ class Database(Borg):
         :return: List w/ question and answer as a dict
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT body, answer FROM answers "
             "LEFT JOIN questions ON answers.question_id = questions.ROWID "
@@ -173,12 +174,12 @@ class Database(Borg):
         :param user_id: Slack user id
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "DELETE FROM answers WHERE user_id = ?",
             [user_id],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def set_user_answer(
@@ -195,12 +196,12 @@ class Database(Borg):
         :param answer: User answer
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "INSERT INTO answers (user_id, question_id, answer) VALUES (?, ?, ?)",
             [user_id, question_id, answer]
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def delete_user(
@@ -212,12 +213,12 @@ class Database(Borg):
 
         :param user_id: Slack user id
         """
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             f"DELETE FROM users WHERE user_id = ?",
             [user_id],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def get_all_channels(
@@ -231,7 +232,7 @@ class Database(Borg):
 
         from itertools import chain
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT channel_id FROM channels"
         )
@@ -250,7 +251,7 @@ class Database(Borg):
 
         from itertools import chain
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT body FROM questions"
         )
@@ -261,24 +262,28 @@ class Database(Borg):
     async def add_channel(
             self,
             channel_id: str,
+            team_id: str,
+            channel_name: str,
             cron: Optional[str] = None,
     ) -> None:
         """
         Add or edit channel in the channels table
 
         :param channel_id: Slack channel id
+        :param team_id: Slack workspace team id
+        :param channel_name: Slack channel name
         :param cron: Channel's daily cron (can be None if not set yet)
         """
 
         if cron is None:
             cron = ""
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
-            "INSERT OR REPLACE INTO channels (channel_id, cron) VALUES (?, ?)",
-            [channel_id, cron],
+            "INSERT OR REPLACE INTO channels (channel_id, team_id, channel_name, cron) VALUES (?, ?, ?, ?)",
+            [channel_id, team_id, channel_name, cron],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def add_question(
@@ -291,12 +296,12 @@ class Database(Borg):
         :param question: Question body
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "INSERT OR REPLACE INTO questions (body) VALUES (?)",
             [question],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def delete_question(
@@ -309,12 +314,12 @@ class Database(Borg):
         :param question_rowid: Question's ROWID
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "DELETE FROM questions WHERE ROWID = ?",
             [question_rowid],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def delete_channel(
@@ -327,12 +332,12 @@ class Database(Borg):
         :param channel_id: Slack channel id
         """
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "DELETE FROM channels WHERE channel_id = ?",
             [channel_id],
         )
-        await self.__db.commit()
+        await self.db.commit()
         await cursor.close()
 
     async def get_all_users_by_channel_id(
@@ -348,7 +353,7 @@ class Database(Borg):
 
         from itertools import chain
 
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
             "SELECT user_id FROM users WHERE main_channel_id = ?",
             [channel_id],
@@ -359,19 +364,136 @@ class Database(Borg):
 
     async def get_all_cron_with_channels(
             self,
-    ) -> list[tuple[str, str]]:
+    ) -> list[tuple[str]]:
         """
         Get list of all channels w/ corresponding cron
 
-        :return: Sequence of channel_id and cron in sets
+        :return: Sequence of channel_id, team_id & cron in sets
         """
-        cursor = await self.__db.cursor()
+        cursor = await self.db.cursor()
         await cursor.execute(
-            "SELECT channel_id, cron FROM channels"
+            "SELECT channel_id, team_id, cron FROM channels"
         )
         cron_list = await cursor.fetchall()
         await cursor.close()
-        return cron_list
+        return cron_list  # noqa
+
+    async def update_cron_by_channel_id(
+            self,
+            channel_id: str,
+            cron: str,
+    ) -> None:
+        """
+        Update cron for the specified channel
+        :param channel_id: Slack channel id
+        :param cron: Daily meeting cron
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "UPDATE channels SET cron = ? WHERE channel_id = ?",
+            [cron, channel_id]
+        )
+        await self.db.commit()
+        await cursor.close()
+
+    async def update_user_q_idx(
+            self,
+            user_id: str,
+            q_idx: int,
+    ) -> None:
+        """
+        Update user q_idx by user id
+
+        :param user_id: Slack user id
+        :param q_idx: User's current question id
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "UPDATE users SET q_idx = ? WHERE user_id = ?",
+            [q_idx, user_id],
+        )
+        await self.db.commit()
+        await cursor.close()
+
+    async def reset_user_daily_status(
+            self,
+            user_id: str,
+    ) -> None:
+        """
+        Reset user's daily status and q_idx to default
+
+        :param user_id: Slack user id
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "UPDATE users SET q_idx = 0, daily_status = FALSE WHERE user_id = ?",
+            [user_id],
+        )
+        await self.db.commit()
+        await cursor.close()
+
+    async def start_user_daily_status(
+            self,
+            user_id: str,
+    ) -> None:
+        """
+        Set user's daily status and q_idx to starting daily values
+
+        :param user_id: Slack user id
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "UPDATE users SET q_idx = 1, daily_status = TRUE WHERE user_id = ?",
+            [user_id],
+        )
+        await self.db.commit()
+        await cursor.close()
+
+    async def get_first_question(
+            self,
+    ) -> Optional[str]:
+        """
+        Get first question from the database
+        :return: First question from the database as a string
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "SELECT body FROM questions"
+        )
+        questions = await cursor.fetchone()
+        await cursor.close()
+
+        # Catch case w/ missing questions
+        if not questions:
+            return None
+
+        return questions[0]
+
+    async def get_channel_link_info(
+            self,
+            channel_id: str,
+    ) -> tuple[str, str]:
+        """
+        Get all necessary parts to create link to slask channel
+
+        :param channel_id: Slack channel id
+        :return: Set w/ channel name & team_id
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "SELECT channel_name, team_id FROM channels WHERE channel_id = ?",
+            [channel_id],
+        )
+        channel_info = await cursor.fetchone()
+        await cursor.close()
+
+        return channel_info  # noqa
 
 
 if __name__ == "__main__":
