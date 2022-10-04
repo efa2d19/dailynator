@@ -1,7 +1,7 @@
 from typing import Sequence
-
 from slack_sdk.models.attachments import BlockAttachment
 from slack_sdk.web.async_client import AsyncWebClient
+from asyncio import gather
 
 
 async def post_report(
@@ -52,34 +52,70 @@ async def start_daily(
     from src.block_kit import start_daily_block
 
     db = Database()
-    await db.connect()
 
     # Get user_list
-    user_list: list[str, str] = await db.get_all_users_by_channel_id(channel_id=channel_id)
+    user_list = await db.get_all_users_by_channel_id(
+        channel_id=channel_id,
+    )
 
     # Get first question
-    first_question: str = (await db.get_all_questions())[0]
+    first_question: str = await db.get_first_question()
 
-    for user in user_list:
-        # Get users main channel
-        user_main_channel = await db.get_user_main_channel(user_id=user)
+    if first_question is None:
+        from src.block_kit import error_block
+
+        # Notify channel about missing questions
+        await app.client.chat_postMessage(
+            channel=channel_id,
+            blocks=error_block(
+                header_text="No questions are available",
+                body_text="Please, add question(s) via `/question_append <question>`",
+            ),
+        )
+
+        return
+
+    async def start_setup_daily(
+            user_id: str,
+    ) -> None:
+        """
+        Wrapper for async setting necessary field in database and deleting old answers if still present
+
+        :param user_id: Slack user id
+        """
 
         # Set user daily status & delete user's old idx
-        await db.create_user(
-            user_id=user,
-            daily_status=True,
-            q_idx=1,
-            main_channel_id=user_main_channel,
+        await db.start_user_daily_status(
+            user_id=user_id,
         )
 
         # Delete old user's answers from Redis
-        await db.delete_user_answers(user_id=user)
+        await db.delete_user_answers(
+            user_id=user_id,
+        )
+
+    async def post_first_question(
+            user_id: str,
+    ) -> None:
+        """
+        Wrapper for async posting the first question
+
+        :param user_id: Slack user id
+        """
 
         # Get channel_id
-        user_im_channel = (await app.client.conversations_open(users=user))["channel"]["id"]
+        user_im_channel = (
+            await app.client.conversations_open(
+                users=user_id,
+            )
+        )["channel"]["id"]
 
         # Get user info
-        user_info = (await app.client.users_info(user=user))["user"]
+        user_info = (
+            await app.client.users_info(
+                user=user_id,
+            )
+        )["user"]
 
         # Send first question
         await app.client.chat_postMessage(
@@ -90,3 +126,27 @@ async def start_daily(
                 first_question=first_question
             ),
         )
+
+    async_tasks_primary = list()
+    async_tasks_secondary = list()
+
+    for user in user_list:
+        async_tasks_primary.append(
+            start_setup_daily(
+                user_id=user,
+            )
+        )
+
+        async_tasks_secondary.append(
+            post_first_question(
+                user_id=user,
+            )
+        )
+
+    # Update all necessary statuses at once
+    await gather(*async_tasks_primary)
+
+    # Post all DMs at once
+    await gather(*async_tasks_secondary)
+
+
