@@ -17,14 +17,16 @@ def report_attachment_block(
 ) -> BlockAttachment:
     return BlockAttachment(
         blocks=[
-            HeaderBlock(text=header_text),
+            HeaderBlock(
+                text=header_text,
+            ),
             SectionBlock(
                 text=MarkdownTextObject(
                     text=body_text,
                 )
             )
         ],
-        color=color
+        color=color,
     )
 
 
@@ -58,8 +60,8 @@ def start_daily_block(
 def end_daily_block(
         start_body_text: str,
         end_body_text: str,
+        footer_text: str,
 ) -> Sequence[Block]:
-    # TODO add link to the channel here
     return [
         SectionBlock(
             text=MarkdownTextObject(
@@ -71,7 +73,14 @@ def end_daily_block(
                 text=end_body_text,
             )
         ),
-        DividerBlock()
+        DividerBlock(),
+        ContextBlock(
+            elements=[
+                MarkdownTextObject(
+                    text=footer_text,
+                ),
+            ]
+        ),
     ]
 
 
