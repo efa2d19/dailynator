@@ -24,6 +24,10 @@ scheduler = AsyncIOScheduler()
 
 async def main():
     import src.listeners as listeners
+    from src.db import Database
+
+    # Create database connection
+    await Database().connect()
 
     # Get SocketHandler
     handler = AsyncSocketModeHandler(app=listeners.app)
