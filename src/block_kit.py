@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Optional
 
 from slack_sdk.models.blocks import Block
 from slack_sdk.models.blocks import SectionBlock
@@ -128,10 +128,23 @@ def error_block(
 
 def success_block(
         header_text: str,
+        body_text: Optional[str] = None,
 ) -> Sequence[Block]:
-    return [
+    blocks = [
         HeaderBlock(
             text=":white_check_mark:\t" + header_text,
         ),
         DividerBlock(),
     ]
+
+    if body_text:
+        blocks.insert(
+            1,
+            SectionBlock(
+                text=MarkdownTextObject(
+                    text=body_text,
+                )
+            ),
+        )
+
+    return blocks
