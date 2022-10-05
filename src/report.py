@@ -3,10 +3,14 @@ from slack_sdk.models.attachments import BlockAttachment
 from slack_sdk.web.async_client import AsyncWebClient
 from asyncio import gather
 
+from src.db import Database
+
 
 async def post_report(
         app: AsyncWebClient,
+        db_connection: Database,
         channel: str,
+        user_id: str,
         attachments: Sequence[BlockAttachment],
         username: str,
         icon_url: str,
@@ -15,7 +19,9 @@ async def post_report(
     Posts a report to the specified channel
 
     :param app: Async App instance
+    :param db_connection: Database connection instance
     :param channel: Channel id
+    :param user_id: Slack user id
     :param attachments: Sequence of attachments
     :param username: Custom username
     :param icon_url: Custom icon url
@@ -41,7 +47,13 @@ async def post_report(
         # Choose random emoji
         kwargs["icon_emoji"] = choice(emoji_list)
 
-    await app.chat_postMessage(**kwargs)
+    message_response = await app.chat_postMessage(**kwargs)
+
+    await db_connection.write_daily_ts(
+        ts=message_response["ts"],
+        user_id=user_id,
+        was_mentioned=False,
+    )
 
 
 async def start_daily(

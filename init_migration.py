@@ -29,7 +29,7 @@ create table channels (
         """\
 create table users (
     user_id TEXT PRIMARY KEY NOT NULL,
-    daily_status INTEGER NOT NULL,
+    daily_status INTEGER NOT NULL default FALSE,
     q_idx INTEGER,
     main_channel_id TEXT NOT NULL,
     real_name TEXT NOT NULL,
@@ -47,6 +47,18 @@ create table answers (
     answer TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users (user_id),
     FOREIGN KEY (question_id) REFERENCES users (ROWID)
+)\
+"""
+    )
+
+    # Create daily table
+    cursor.execute(
+        """\
+create table daily (
+    thread_ts text PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    was_mentioned INTEGER NOT NULL default FALSE,
+    FOREIGN KEY (user_id) REFERENCES users (user_id)
 )\
 """
     )

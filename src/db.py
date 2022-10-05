@@ -80,7 +80,7 @@ class Database(Borg):
     async def get_user_status(
             self,
             user_id: str,
-    ) -> bool:
+    ) -> Optional[bool]:
         """
         Get current daily status by user_id
 
@@ -95,7 +95,7 @@ class Database(Borg):
         )
         user_status = await cursor.fetchone()
         await cursor.close()
-        return bool(user_status[0]) if user_status else False
+        return bool(user_status[0]) if user_status else None
 
     async def get_user_main_channel(
             self,
@@ -515,6 +515,66 @@ class Database(Borg):
         await cursor.close()
 
         return channel_cron  # noqa
+
+    async def write_daily_ts(
+            self,
+            ts: str,
+            user_id: str,
+            was_mentioned: bool,
+    ) -> None:
+        """
+        Write ts and user_id to daily database
+
+        :param ts: Message ts
+        :param user_id: Slack user id
+        :param was_mentioned: Whether user was mentioned or not
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "INSERT INTO daily (thread_ts, user_id, was_mentioned) VALUES (?, ?, ?)",
+            [ts, user_id, was_mentioned],
+        )
+        await self.db.commit()
+        await cursor.close()
+
+    async def get_user_id_by_thread_ts(
+            self,
+            thread_ts: str,
+    ) -> tuple[str | None, str | None]:
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "SELECT user_id, was_mentioned FROM daily WHERE thread_ts = ?",
+            [thread_ts],
+        )
+        user_id, was_mentioned = await cursor.fetchone()
+        await cursor.close()
+
+        # Return None if nothing was found
+        if not user_id:
+            return None, None
+
+        return user_id, was_mentioned
+
+    async def update_was_mentioned_in_thread(
+            self,
+            user_id: str,
+            was_mentioned: bool,
+    ) -> None:
+        """
+        Update mention status by user_id
+
+        :param user_id: Slack user id
+        :param was_mentioned: Mention status
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "UPDATE daily SET was_mentioned = ? WHERE user_id = ?",
+            [was_mentioned, user_id],
+        )
+        await self.db.commit()
+        await cursor.close()
 
 
 if __name__ == "__main__":
