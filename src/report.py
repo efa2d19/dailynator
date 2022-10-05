@@ -67,6 +67,7 @@ async def start_daily(
         # Notify channel about missing questions
         await app.client.chat_postMessage(
             channel=channel_id,
+            text=":x: No questions are available",
             blocks=error_block(
                 header_text="No questions are available",
                 body_text="Please, add question(s) via `/question_append <question>`",
@@ -110,18 +111,12 @@ async def start_daily(
             )
         )["channel"]["id"]
 
-        # Get user info
-        user_info = (
-            await app.client.users_info(
-                user=user_id,
-            )
-        )["user"]
-
         # Send first question
         await app.client.chat_postMessage(
             channel=user_im_channel,
+            text=":robot_face: Daily has started",
             blocks=start_daily_block(
-                header_text=f"Hey, {user_info['real_name']}! :sun_with_face: ",
+                header_text=f"Hey, <@{user_id}>! :sun_with_face: ",
                 body_text="*Daily time has come* :melting_face: ",
                 first_question=first_question
             ),
