@@ -1,0 +1,96 @@
+{
+    "display_information": {
+        "name": "Dailynator",
+        "description": "Bot for handling with daily meetings in ease",
+        "background_color": "#212124"
+    },
+    "features": {
+        "bot_user": {
+            "display_name": "Dailynator",
+            "always_online": true
+        },
+        "slash_commands": [
+            {
+                "command": "/channel_append",
+                "description": "Add current channel to daily bot",
+                "usage_hint": "Can't be used in DMs",
+                "should_escape": false
+            },
+            {
+                "command": "/channel_pop",
+                "description": "Remove current channel from daily bot",
+                "usage_hint": "Can't be used in DMs",
+                "should_escape": false
+            },
+            {
+                "command": "/skip_daily",
+                "description": "Skip closest daily",
+                "usage_hint": "Can't be used in DMs",
+                "should_escape": false
+            },
+            {
+                "command": "/cron",
+                "description": "Specify daily meetings schedule in current channel",
+                "usage_hint": "0 10 * * 1-5 (example: mon-fri at 10 AM your timezone)",
+                "should_escape": false
+            },
+            {
+                "command": "/questions",
+                "description": "Get the list of daily questions",
+                "usage_hint": "Can't be used in DMs",
+                "should_escape": false
+            },
+            {
+                "command": "/refresh_users",
+                "description": "Force refresh users in this channel (if you met unexpected behavior)",
+                "usage_hint": "Can't be used in DMs",
+                "should_escape": false
+            },
+            {
+                "command": "/question_append",
+                "description": "Add a question to the daily bot",
+                "usage_hint": "What was you doing yesterday? (doesn't support mrkdwn)",
+                "should_escape": true
+            },
+            {
+                "command": "/question_pop",
+                "description": "Removes the question from the daily bot",
+                "usage_hint": "<question_index> (example: 1)",
+                "should_escape": false
+            }
+        ]
+    },
+    "oauth_config": {
+        "scopes": {
+            "bot": [
+                "channels:history",
+                "channels:read",
+                "chat:write",
+                "chat:write.customize",
+                "im:read",
+                "im:write",
+                "users:read",
+                "emoji:read",
+                "im:history",
+                "app_mentions:read",
+                "commands",
+                "groups:read"
+            ]
+        }
+    },
+    "settings": {
+        "event_subscriptions": {
+            "bot_events": [
+                "member_joined_channel",
+                "member_left_channel",
+                "message.im"
+            ]
+        },
+        "interactivity": {
+            "is_enabled": true
+        },
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": true,
+        "token_rotation_enabled": false
+    }
+}
