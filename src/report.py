@@ -65,10 +65,39 @@ async def start_daily(
 
     db = Database()
 
-    # Get user_list
-    user_list = await db.get_all_users_by_channel_id(
+    # Get team_id
+    _, team_id = await db.get_channel_link_info(
         channel_id=channel_id,
     )
+
+    # Get raw user_list
+    raw_user_list = await db.get_all_users_by_channel_id(
+        channel_id=channel_id,
+    )
+
+    # Check users DND status
+    user_list = list()
+
+    async def check_user_dnd_status(
+            user_id: str,
+    ) -> None:
+        user_list.append(
+            app.client.dnd_info(
+                team_id=team_id,
+                user=user_id,
+            )
+        )
+
+    async_tasks = list()
+
+    for user in raw_user_list:
+        async_tasks.append(
+            check_user_dnd_status(
+                user_id=user,
+            )
+        )
+
+    await gather(*async_tasks)
 
     # Get first question
     first_question: str = await db.get_first_question()
@@ -155,5 +184,3 @@ async def start_daily(
 
     # Post all DMs at once
     await gather(*async_tasks_secondary)
-
-
