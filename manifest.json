@@ -67,14 +67,14 @@
                 "channels:read",
                 "chat:write",
                 "chat:write.customize",
+                "commands",
+                "emoji:read",
+                "groups:read",
+                "im:history",
                 "im:read",
                 "im:write",
                 "users:read",
-                "emoji:read",
-                "im:history",
-                "app_mentions:read",
-                "commands",
-                "groups:read"
+                "dnd:read"
             ]
         }
     },
@@ -83,6 +83,7 @@
             "bot_events": [
                 "member_joined_channel",
                 "member_left_channel",
+                "message.channels",
                 "message.im"
             ]
         },
