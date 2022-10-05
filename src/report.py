@@ -59,9 +59,12 @@ async def post_report(
 async def start_daily(
         channel_id: str,
 ) -> None:
-    from main import app
     from src.db import Database
     from src.block_kit import start_daily_block
+    from main import app
+
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
     db = Database()
 
@@ -81,12 +84,32 @@ async def start_daily(
     async def check_user_dnd_status(
             user_id: str,
     ) -> None:
-        user_list.append(
-            app.client.dnd_info(
+        user_next_dnd_start = (
+            await app.client.dnd_info(
                 team_id=team_id,
                 user=user_id,
             )
+        )["next_dnd_start_ts"]
+
+        user_tz = (
+            await app.client.users_info(
+                user=user_id,
+            )
+        )["user"]["tz"]
+
+        # Get user's current offset-aware datetime
+        user_dnd_start_aware = datetime.fromtimestamp(
+            user_next_dnd_start,
+            tz=ZoneInfo(key=user_tz),
         )
+
+        # Get current offset-aware datetime
+        time_now_aware = datetime.now().astimezone()
+
+        if time_now_aware < user_dnd_start_aware:
+            user_list.append(
+                user_id
+            )
 
     async_tasks = list()
 
