@@ -157,9 +157,9 @@ async def is_dm_in_command(
 
         await client.chat_postEphemeral(
             channel=channel_id,
-            text=":x: You can't use command in DMs",
+            text=":x: You can't use commands in DMs",
             blocks=error_block(
-                header_text="You can't use command in DMs",
+                header_text="You can't use commands in DMs",
                 body_text="Open any available channel and send the command there",
             ),
             user=user_id,
