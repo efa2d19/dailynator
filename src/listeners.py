@@ -42,10 +42,11 @@ async def channel_append_listener(
 
         # Post message on success
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":white_check_mark: Channel has been successfully subscribed",
             blocks=success_block(
                 header_text="Channel has been successfully subscribed",
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
 
@@ -64,20 +65,22 @@ async def channel_append_listener(
 
         # Post a message on success
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":white_check_mark: All members was successfully parsed",
             blocks=success_block(
                 header_text="All members was successfully parsed",
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
         return
 
     # Trash talk if bot is already in the channel
     await client.chat_postEphemeral(
+        channel=body["channel_id"],
+        text=":white_check_mark: Channel already has been added",
         blocks=success_block(
             header_text="Channel already has been added",
         ),
-        channel=body["channel_id"],
         user=body["user_id"],
     )
 
@@ -111,10 +114,11 @@ async def channel_pop_listener(
         )
 
         await client.chat_postEphemeral(
-            blocks=success_block(
-                header_text="Channel has been successfully unsubscribed"
-            ),
             channel=body["channel_id"],
+            text=":white_check_mark: Channel has been successfully unsubscribed",
+            blocks=success_block(
+                header_text="Channel has been successfully unsubscribed",
+            ),
             user=body["user_id"],
         )
 
@@ -122,20 +126,22 @@ async def channel_pop_listener(
         await db.delete_users_by_main_channel(body["channel_id"])
 
         await client.chat_postEphemeral(
-            blocks=success_block(
-                header_text="All members was successfully unsubscribed"
-            ),
             channel=body["channel_id"],
+            text=":white_check_mark: All members was successfully unsubscribed",
+            blocks=success_block(
+                header_text="All members was successfully unsubscribed",
+            ),
             user=body["user_id"],
         )
         return
 
     # Trash talk if bot is already left
     await client.chat_postEphemeral(
-        blocks=success_block(
-            "Channel already has been successfully unsubscribed"
-        ),
         channel=body["channel_id"],
+        text=":white_check_mark: Channel already has been successfully unsubscribed",
+        blocks=success_block(
+            "Channel already has been successfully unsubscribed",
+        ),
         user=body["user_id"],
     )
 
@@ -178,10 +184,11 @@ async def join_channel_listener(
 
     # Send a nice notification to the creator of the channel
     await client.chat_postEphemeral(
-        blocks=success_block(
-            f"User `{real_name}` joined and was successfully parsed",
-        ),
         channel=body["event"]["channel"],
+        text=f":white_check_mark: {real_name} joined and was successfully parsed",
+        blocks=success_block(
+            f"<@{body['event']['user']}> joined and was successfully parsed",
+        ),
         user=creator_id,
     )
 
@@ -218,10 +225,11 @@ async def leave_channel_listener(
 
     # Send a nice notification to the creator
     await client.chat_postEphemeral(
-        blocks=success_block(
-            header_text=f"User `{real_name}` left and was successfully unsubscribed",
-        ),
         channel=body["event"]["channel"],
+        text=f":white_check_mark: {real_name} left and was successfully unsubscribed",
+        blocks=success_block(
+            header_text=f"<@{body['event']['user']}> left and was successfully unsubscribed",
+        ),
         user=creator_id,
     )
 
@@ -267,10 +275,11 @@ async def refresh_users_listener(
 
     # Notification to the user
     await client.chat_postEphemeral(
-        blocks=success_block(
-            header_text="All members have been successfully parsed"
-        ),
         channel=body["channel_id"],
+        text=":white_check_mark: All members have been successfully parsed",
+        blocks=success_block(
+            header_text="All members have been successfully parsed",
+        ),
         user=body["user_id"],
     )
 
@@ -300,11 +309,12 @@ async def questions_listener(
         from src.block_kit import error_block
 
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":x: None question available",
             blocks=error_block(
                 header_text="None question available",
                 body_text="Add some with `/question_append <your_daily_question>`",
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
         return
@@ -349,10 +359,11 @@ async def question_append_listener(
         )
 
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":white_check_mark:  Your question has been added to the list",
             blocks=success_block(
                 header_text="Your question has been added to the list"
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
         return
@@ -361,11 +372,12 @@ async def question_append_listener(
 
     # Else send the instructions
     await client.chat_postEphemeral(
+        channel=body["channel_id"],
+        text=":x: Question wasn't entered",
         blocks=error_block(
             header_text="Question wasn't entered",
             body_text="Enter the question after the command\nExample: `/question_append <your_question>`",
         ),
-        channel=body["channel_id"],
         user=body["user_id"],
     )
 
@@ -395,11 +407,12 @@ async def question_pop_listener(
             from src.block_kit import error_block
 
             await client.chat_postEphemeral(
+                channel=body["channel_id"],
+                text=":x: Not valid question index",
                 blocks=error_block(
                     header_text="Not valid question index",
                     body_text="Enter the index of the question you want to delete\nExample: `/question_pop 1` ",
                 ),
-                channel=body["channel_id"],
                 user=body["user_id"],
             )
             return
@@ -411,10 +424,11 @@ async def question_pop_listener(
         from src.block_kit import success_block
 
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":white_check_mark: Your question has been removed from the daily bot",
             blocks=success_block(
                 header_text="Your question has been removed from the daily bot",
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
         return
@@ -423,11 +437,12 @@ async def question_pop_listener(
 
     # Else send the instructions
     await client.chat_postEphemeral(
+        channel=body["channel_id"],
+        text=":x: Index wasn't entered'",
         blocks=error_block(
             header_text="Index wasn't entered",
             body_text="Enter the index after the command\nExample: `/question_pop 1`",
         ),
-        channel=body["channel_id"],
         user=body["user_id"],
     )
 
@@ -461,11 +476,12 @@ async def cron_listener(
         from src.block_kit import error_block
 
         await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":x: Incorrect cron",
             blocks=error_block(
                 header_text="Incorrect cron",
                 body_text="Check cron on <https://crontab.guru/|CrontabGuru>",
             ),
-            channel=body["channel_id"],
             user=body["user_id"],
         )
         return
@@ -486,10 +502,11 @@ async def cron_listener(
 
     # Post notification on success
     await client.chat_postEphemeral(
+        channel=body["channel_id"],
+        text=":white_check_mark: Cron was updated",
         blocks=success_block(
             header_text="Cron was updated",
         ),
-        channel=body["channel_id"],
         user=body["user_id"],
     )
 
@@ -514,6 +531,7 @@ async def im_listener(
         # Send notification about user's daily status
         await client.chat_postMessage(
             channel=message["channel"],
+            text=":x: Bot is inactive at the moment",
             blocks=error_block(
                 header_text="Bot is inactive at the moment",
                 body_text="Daily meeting hasn't been started yet or you answered on all questions",
@@ -571,6 +589,7 @@ async def im_listener(
 
             await client.chat_postMessage(
                 channel=body["event"]["channel"],
+                text=":x: Daily will not be posted",
                 blocks=error_block(
                     header_text="Daily will not be posted",
                     body_text="You aren't subscribed to a channel.\nRun this in your daily channel `/refresh_users`",
@@ -638,8 +657,9 @@ async def im_listener(
         async_tasks.append(
             client.chat_postMessage(
                 channel=body["event"]["channel"],
+                text=":white_check_mark: Daily was posted",
                 blocks=end_daily_block(
-                    start_body_text=f"Thanks, {user_info['real_name']}!",
+                    start_body_text=f"Thanks, <@{message['user']}>!",
                     end_body_text="Have a wonderful and productive day :four_leaf_clover: ",
                     footer_text=f"You can see your latest report in {channel_link}",
                 ),
@@ -657,4 +677,41 @@ async def im_listener(
         text=">" + questions[user_idx],
         mrkdwn=True,  # Enable markdown
     )
+
+
+@app.command("/skip_daily")
+async def skip_daily_listener(
+        ack: AsyncAck,
+        body: dict,
+        client: AsyncWebClient,
+):
+    await ack()
+
+    # Catch if command was used in DM
+    if await is_dm_in_command(
+            client=client,
+            channel_id=body["channel_id"],
+            channel_name=body["channel_name"],
+            user_id=body["user_id"],
+    ):
+        return
+
+    from src.utils import skip_cron
+    from src.block_kit import success_block
+
+    # Skip next cron
+    await skip_cron(
+        channel_id=body["channel_id"],
+    )
+
+    # Notify channel about skipped daily
+    await client.chat_postMessage(
+        channel=body["channel_id"],
+        text=":white_check_mark: Daily was skipped",
+        blocks=success_block(
+            header_text="Next daily was successfully skipped",
+            body_text=f"<@{body['user_id']}> skipped next daily",
+        ),
+    )
+
 # TODO: add thread listener
