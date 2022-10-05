@@ -1,6 +1,9 @@
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
-from src.db import Database
+
 from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name
+from src.matchers import im_matcher, thread_matcher
+from src.db import Database
+
 from main import app
 from asyncio import gather
 
@@ -466,12 +469,12 @@ async def cron_listener(
 
     # Validate user input
     try:
-        from cron_validator import CronValidator
+        from apscheduler.triggers.cron import CronTrigger
 
         # Raise an exception if cron wasn't specified
         if not body["text"]:
             raise ValueError
-        CronValidator.parse(body["text"])
+        CronTrigger().from_crontab(body["text"])
     except ValueError:
         from src.block_kit import error_block
 
@@ -511,21 +514,45 @@ async def cron_listener(
     )
 
 
-@app.event("message")
+@app.event(
+    "message",
+    matchers=[
+        im_matcher,
+    ],
+)
 async def im_listener(
         ack: AsyncAck,
         client: AsyncWebClient,
-        message,
-        body,
+        message: dict,
+        body: dict,
 ):
     await ack()
 
     db = Database()
 
+    # Get user daily status
+    user_status = await db.get_user_status(
+        user_id=message["user"],
+    )
+
+    # Notify if user not subscribed
+    if user_status is None:
+        from src.block_kit import error_block
+
+        # Send notification about unsubscribed status
+        await client.chat_postMessage(
+            channel=message["channel"],
+            text=":x: You are not subscribed",
+            blocks=error_block(
+                header_text="You are not subscribed to daily bot",
+                body_text="Invite the bot to the channel with you as a member to subscribe",
+            ),
+        )
+
+        return
+
     # Skip if daily wasn't started for the user
-    if not await db.get_user_status(
-            user_id=message['user'],
-    ):
+    if not user_status:
         from src.block_kit import error_block
 
         # Send notification about user's daily status
@@ -646,7 +673,9 @@ async def im_listener(
         async_tasks.append(
             post_report(
                 app=client,
+                db_connection=db,
                 channel=user_main_channel,
+                user_id=message["user"],
                 attachments=attachments,
                 username=user_info["real_name"],
                 icon_url=user_info["profile"]["image_48"],
@@ -714,4 +743,36 @@ async def skip_daily_listener(
         ),
     )
 
-# TODO: add thread listener
+
+@app.event(
+    "message",
+    matchers=[
+        thread_matcher,
+    ],
+)
+async def thread_listener(
+        ack: AsyncAck,
+        client: AsyncWebClient,
+        message,
+):
+    await ack()
+
+    db = Database()
+
+    user_id, was_mentioned = await db.get_user_id_by_thread_ts(
+        thread_ts=message["thread_ts"],
+    )
+
+    if user_id and not was_mentioned:
+        await db.update_was_mentioned_in_thread(
+            user_id=user_id,
+            was_mentioned=True,
+        )
+
+        await client.chat_postMessage(
+            text=f"Hey, <@{user_id}>.\nYou was mentioned in the thread",
+            channel=message["channel"],
+            thread_ts=message["thread_ts"],
+            mrkdwn=True,
+        )
+
