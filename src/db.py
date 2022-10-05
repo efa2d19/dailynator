@@ -495,6 +495,27 @@ class Database(Borg):
 
         return channel_info  # noqa
 
+    async def get_cron_by_channel_id(
+            self,
+            channel_id: str,
+    ) -> tuple[str, str]:
+        """
+        Get cron and team_id by the channel_id (for skipping cron)
+
+        :param channel_id: Slack channel id
+        :return: Set of cron and team_id
+        """
+
+        cursor = await self.db.cursor()
+        await cursor.execute(
+            "SELECT cron, team_id FROM channels WHERE channel_id = ?",
+            [channel_id],
+        )
+        channel_cron = await cursor.fetchone()
+        await cursor.close()
+
+        return channel_cron  # noqa
+
 
 if __name__ == "__main__":
     from asyncio import run
