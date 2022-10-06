@@ -41,3 +41,7 @@ async def main():
 
 if __name__ == "__main__":
     run(main())
+
+# TODO: add logging everywhere (+ write to a file)
+# TODO: add try catch wrapper w/ logger inside
+# TODO: write dockerfile

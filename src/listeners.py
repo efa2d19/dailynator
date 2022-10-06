@@ -894,16 +894,14 @@ async def thread_listener(
 
     db = Database()
 
-    user_id, was_mentioned = await db.get_user_id_by_thread_ts(
+    # Check if thread is report (None if not a report)
+    # If report - the entry will be deleted
+    user_id = await db.get_user_id_by_thread_ts(
         thread_ts=message["thread_ts"],
     )
 
-    if user_id and not was_mentioned:
-        await db.update_was_mentioned_in_thread(
-            user_id=user_id,
-            was_mentioned=True,
-        )
-
+    if user_id:
+        # Notify
         await client.chat_postMessage(
             text=f"Hey, <@{user_id}>.\nYou was mentioned in the thread",
             channel=message["channel"],
