@@ -123,7 +123,9 @@ async def start_daily(
     await gather(*async_tasks)
 
     # Get first question
-    first_question: str = await db.get_first_question()
+    first_question = await db.get_first_question(
+        channel_id=channel_id,
+    )
 
     if first_question is None:
         from src.block_kit import error_block

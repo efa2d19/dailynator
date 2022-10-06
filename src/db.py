@@ -221,31 +221,33 @@ class Database(Borg):
         await self.db.commit()
         await cursor.close()
 
-    async def get_all_channels(
+    async def check_channel_exist(
             self,
-    ) -> list[str, str]:
+            channel_id: str,
+    ) -> bool:
         """
-        Return all channel_id from channels table
+        Check if channel w/ specified channel_id exists
 
-        :return: List of all channel_id's
+        :return: Return True if channel exist else False
         """
-
-        from itertools import chain
 
         cursor = await self.db.cursor()
         await cursor.execute(
-            "SELECT channel_id FROM channels"
+            "SELECT ROWID FROM channels WHERE channel_id = ?",
+            [channel_id],
         )
-        channels = await cursor.fetchall()
+        channels = await cursor.fetchone()
         await cursor.close()
-        return list(chain(*channels))
+        return bool(channels)
 
     async def get_all_questions(
             self,
+            channel_id: str,
     ) -> list[str, str]:
         """
         Get all questions from questions table
 
+        :param channel_id: Slack channel id
         :return: List of all questions
         """
 
@@ -253,7 +255,8 @@ class Database(Borg):
 
         cursor = await self.db.cursor()
         await cursor.execute(
-            "SELECT body FROM questions"
+            "SELECT body FROM questions WHERE channel_id = ?",
+            [channel_id],
         )
         questions = await cursor.fetchall()
         await cursor.close()
@@ -288,18 +291,20 @@ class Database(Borg):
 
     async def add_question(
             self,
+            channel_id: str,
             question: str,
     ) -> None:
         """
         Add or replace question in the questions table
 
+        :param channel_id: Slack channel id
         :param question: Question body
         """
 
         cursor = await self.db.cursor()
         await cursor.execute(
-            "INSERT OR REPLACE INTO questions (body) VALUES (?)",
-            [question],
+            "INSERT INTO questions (channel_id, body) VALUES (?, ?)",
+            [channel_id, question],
         )
         await self.db.commit()
         await cursor.close()
@@ -307,17 +312,19 @@ class Database(Borg):
     async def delete_question(
             self,
             question_rowid: int,
+            channel_id: str,
     ) -> None:
         """
         Delete question by the ROWID
 
         :param question_rowid: Question's ROWID
+        :param channel_id: Slack channel id
         """
 
         cursor = await self.db.cursor()
         await cursor.execute(
-            "DELETE FROM questions WHERE ROWID = ?",
-            [question_rowid],
+            "DELETE FROM questions WHERE ROWID = ? AND channel_id = ?",
+            [question_rowid, channel_id],
         )
         await self.db.commit()
         await cursor.close()
@@ -455,15 +462,19 @@ class Database(Borg):
 
     async def get_first_question(
             self,
+            channel_id: str,
     ) -> Optional[str]:
         """
         Get first question from the database
+
+        :param channel_id: Slack channel id
         :return: First question from the database as a string
         """
 
         cursor = await self.db.cursor()
         await cursor.execute(
-            "SELECT body FROM questions"
+            "SELECT body FROM questions WHERE channel_id = ?",
+            [channel_id],
         )
         questions = await cursor.fetchone()
         await cursor.close()

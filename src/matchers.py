@@ -1,3 +1,6 @@
+from src.db import Database
+
+
 async def im_matcher(
         message: dict,
 ) -> bool:
@@ -15,3 +18,15 @@ async def thread_matcher(
     ):
         return False
     return True
+
+
+async def channel_subscribed_matcher(
+     body: dict,
+) -> bool:
+    db = Database()
+
+    if await db.check_channel_exist(
+            channel_id=body["event"]["channel"],
+    ):
+        return True
+    return False

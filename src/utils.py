@@ -164,6 +164,7 @@ async def is_dm_in_command(
             ),
             user=user_id,
         )
+
         return True
     return False
 
@@ -183,7 +184,11 @@ async def all_non_bot_members(
     from asyncio import gather
 
     # Parse all members except bots
-    raw_member_list = (await client.conversations_members(channel=channel_id))["members"]
+    raw_member_list = (
+        await client.conversations_members(
+            channel=channel_id,
+        )
+    )["members"]
 
     member_list = list()
 
@@ -202,7 +207,9 @@ async def all_non_bot_members(
 
     for member in raw_member_list:
         async_tasks.append(
-            check_member_is_bot(user_id=member)
+            check_member_is_bot(
+                user_id=member,
+            )
         )
 
     await gather(*async_tasks)

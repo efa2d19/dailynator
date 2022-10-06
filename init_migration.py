@@ -21,9 +21,6 @@ create table channels (
 """
     )
 
-    # Create questions table
-    cursor.execute("create table questions (body TEXT NOT NULL)")
-
     # Create users table
     cursor.execute(
         """\
@@ -34,6 +31,17 @@ create table users (
     main_channel_id TEXT NOT NULL,
     real_name TEXT NOT NULL,
     FOREIGN KEY (main_channel_id) REFERENCES channels (channel_id)
+)\
+"""
+    )
+
+    # Create questions table
+    cursor.execute(
+        """\
+create table questions (
+    channel_id TEXT NOT NULL,
+    body TEXT NOT NULL,
+    FOREIGN KEY (channel_id) REFERENCES channels (channel_id)
 )\
 """
     )

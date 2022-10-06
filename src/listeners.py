@@ -1,7 +1,8 @@
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
 from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name
-from src.matchers import im_matcher, thread_matcher
+from src.block_kit import success_block, error_block
+from src.matchers import im_matcher, thread_matcher, channel_subscribed_matcher
 from src.db import Database
 
 from main import app
@@ -14,6 +15,11 @@ async def channel_append_listener(
         body: dict,
         client: AsyncWebClient,
 ) -> None:
+    """
+    Listen for channel_append command in channel bot was added to \n
+    Exits if command was send in DM or channel has been already subscribed
+    """
+
     await ack()
 
     # Catch if command was used in DM
@@ -25,16 +31,11 @@ async def channel_append_listener(
     ):
         return
 
-    from src.block_kit import success_block
-
     db = Database()
 
     # If where aren't channels or channel is not in the list - add channel to the list
-    all_channels = await db.get_all_channels()
-
-    if (
-            not all_channels
-            or body["channel_id"] not in all_channels
+    if await db.check_channel_exist(
+            channel_id=body["channel_id"]
     ):
         # Write channel
         await db.add_channel(
@@ -94,9 +95,13 @@ async def channel_pop_listener(
         body: dict,
         client: AsyncWebClient,
 ):
+    """
+    Listen for channel_pop command in channel bot was added to \n
+    Exits if command was send in DM or channel has been already unsubscribed
+    """
+
     await ack()
 
-    # Catch if command was used in DM
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
@@ -106,12 +111,12 @@ async def channel_pop_listener(
     ):
         return
 
-    from src.block_kit import success_block
-
     db = Database()
 
     # If the channel is in the list - delete it from the list
-    if body["channel_id"] in await db.get_all_channels():
+    if await db.check_channel_exist(
+            channel_id=body["channel_id"],
+    ):
         await db.delete_channel(
             channel_id=body["channel_id"],
         )
@@ -126,7 +131,9 @@ async def channel_pop_listener(
         )
 
         # Delete all members except for bots
-        await db.delete_users_by_main_channel(body["channel_id"])
+        await db.delete_users_by_main_channel(
+            channel_id=body["channel_id"],
+        )
 
         await client.chat_postEphemeral(
             channel=body["channel_id"],
@@ -149,16 +156,23 @@ async def channel_pop_listener(
     )
 
 
-@app.event("member_joined_channel")
+@app.event(
+    "member_joined_channel",
+    matchers=[
+        channel_subscribed_matcher,
+    ],
+)
 async def join_channel_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
 ):
+    """
+    Listen for user's joining subscribed channels \n
+    """
+
     if body["event"].get("subtype"):
         return
-
-    from src.block_kit import success_block
 
     await ack()
 
@@ -196,16 +210,23 @@ async def join_channel_listener(
     )
 
 
-@app.event("member_left_channel")
+@app.event(
+    "member_left_channel",
+    matchers=[
+        channel_subscribed_matcher,
+    ],
+)
 async def leave_channel_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
 ):
+    """
+    Listen for user's leaving subscribed channels \n
+    """
+
     if body["event"].get("subtype"):
         return
-
-    from src.block_kit import success_block
 
     await ack()
 
@@ -237,13 +258,21 @@ async def leave_channel_listener(
     )
 
 
-@app.command("/refresh_users")
+@app.command(
+    "/refresh_users",
+    matchers=[
+        channel_subscribed_matcher,
+    ],
+)
 async def refresh_users_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
 ):
-    from src.block_kit import success_block
+    """
+    Listen for command refresh_users in subscribed channels \n
+    Exits if command was send in DM
+    """
 
     await ack()
 
@@ -287,7 +316,12 @@ async def refresh_users_listener(
     )
 
 
-@app.command("/questions")
+@app.command(
+    "/questions",
+    matchers=[
+        channel_subscribed_matcher,
+    ],
+)
 async def questions_listener(
         ack: AsyncAck,
         body: dict,
@@ -306,7 +340,9 @@ async def questions_listener(
 
     db = Database()
 
-    question_list = await db.get_all_questions()
+    question_list = await db.get_all_questions(
+        channel_id=body["channel_id"],
+    )
 
     if not len(question_list):
         from src.block_kit import error_block
@@ -358,6 +394,7 @@ async def question_append_listener(
         from src.block_kit import success_block
 
         await db.add_question(
+            channel_id=body["channel_id"],
             question=body["text"],
         )
 
@@ -422,6 +459,7 @@ async def question_pop_listener(
 
         await db.delete_question(
             question_rowid=int(body["text"]),
+            channel_id=body["channel_id"],
         )
 
         from src.block_kit import success_block
@@ -596,12 +634,15 @@ async def im_listener(
     )
 
     # Get questions list
-    questions: list[str, str] = await db.get_all_questions()
-    questions_length: int = len(questions)
-
     user_main_channel = await db.get_user_main_channel(
         user_id=message["user"],
     )
+
+    questions = await db.get_all_questions(
+        channel_id=user_main_channel,
+    )
+
+    questions_length: int = len(questions)
 
     # Update user's daily status if idx is out of range
     if user_idx == questions_length:
@@ -775,4 +816,3 @@ async def thread_listener(
             thread_ts=message["thread_ts"],
             mrkdwn=True,
         )
-
