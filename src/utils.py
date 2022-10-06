@@ -2,6 +2,7 @@ from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from slack_sdk.web.async_client import AsyncWebClient
 
 from src.db import Database
+from src.block_kit import error_block
 
 default_colors = ["#e8aeb7", "#b8e1ff", "#3c7a89", "#f4d06f", "#82aba1"]
 
@@ -20,7 +21,9 @@ async def parse_emoji_list(
     return list(emoji_r.data.get("emoji", {':+1:'}).keys())
 
 
-async def start_cron() -> None:
+async def start_cron(
+
+) -> None:
     """
     Adds cron triggered jobs to default async job store
     """
@@ -39,8 +42,6 @@ async def start_cron() -> None:
     for channel_id, team_id, cron in cron_list:
         # Skip if cron not set
         if not cron:
-            from src.block_kit import error_block
-
             await app.client.chat_postMessage(
                 channel=channel_id,
                 text=":x: No scheduler was added",
@@ -93,8 +94,6 @@ async def skip_cron(
 
     # Send notification to channel if there is no cron or team id
     if not channel_cron or not team_id:
-        from src.block_kit import error_block
-
         await app.client.chat_postMessage(
             channel=channel_id,
             text=":x: Can't skip scheduled daily",
@@ -153,8 +152,6 @@ async def is_dm_in_command(
 
     # Catch if command was used in DM
     if channel_name == "directmessage":  # noqa
-        from src.block_kit import error_block
-
         await client.chat_postEphemeral(
             channel=channel_id,
             text=":x: You can't use commands in DMs",
