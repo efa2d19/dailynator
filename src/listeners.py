@@ -498,7 +498,14 @@ async def question_pop_listener(
 
     # If user specified the question add it and notify the user
     if body["text"]:
-        if not body["text"].isdigit():
+        if (
+                not body["text"].isdigit()
+                or len((
+                    await db.get_all_questions(
+                        channel_id=body["channel_id"],
+                    ))
+                ) < int(body["text"])
+        ):
             await client.chat_postEphemeral(
                 channel=body["channel_id"],
                 text=":x: Not valid question index",

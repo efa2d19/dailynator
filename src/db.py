@@ -336,6 +336,11 @@ class Database(Borg):
 
         rowid_list = list(chain(*(await cursor.fetchall())))
 
+        # Handle case w/ incorrect question_rowid
+        if question_rowid > len(rowid_list):
+            await cursor.close()
+            return
+
         await cursor.execute(
             "DELETE FROM questions WHERE ROWID = ? AND channel_id = ?",
             [rowid_list[question_rowid - 1], channel_id],
