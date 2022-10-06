@@ -59,6 +59,12 @@ async def post_report(
 async def start_daily(
         channel_id: str,
 ) -> None:
+    """
+    Collect everything needed to start a daily meeting and start a new one
+
+    :param channel_id: Slack channel id
+    """
+
     from src.db import Database
     from src.block_kit import start_daily_block
     from main import app
@@ -84,6 +90,12 @@ async def start_daily(
     async def check_user_dnd_status(
             user_id: str,
     ) -> None:
+        """
+        Checks user DND status by comparing next dnd start timestamp with time aware datetime on the machine
+
+        :param user_id: Slack user id
+        """
+
         user_next_dnd_start = (
             await app.client.dnd_info(
                 team_id=team_id,
