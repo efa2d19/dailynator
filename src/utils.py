@@ -47,8 +47,7 @@ async def start_cron(
                 text=":x: No scheduler was added",
                 blocks=error_block(
                     header_text="No scheduler was added",
-                    body_text="Can't start daily 'cause no scheduler was added.\n" +
-                              "Use this to add schedule `/cron <* * * * *>`",
+                    body_text="Use this to add schedule\n`/cron <* * * * *>`",
                 ),
             )
             return
