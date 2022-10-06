@@ -27,7 +27,6 @@ async def channel_append_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -109,7 +108,6 @@ async def channel_pop_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -293,7 +291,6 @@ async def refresh_users_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -346,6 +343,7 @@ async def questions_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        context,
 ):
     """
     Listen for command questions in subscribed channels \n
@@ -357,7 +355,6 @@ async def questions_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -420,7 +417,6 @@ async def question_append_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -484,7 +480,6 @@ async def question_pop_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -564,7 +559,6 @@ async def cron_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):
@@ -840,7 +834,6 @@ async def skip_daily_listener(
     # Catch if command was used in DM
     if await is_dm_in_command(
             client=client,
-            channel_id=body["channel_id"],
             channel_name=body["channel_name"],
             user_id=body["user_id"],
     ):

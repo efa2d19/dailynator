@@ -136,7 +136,6 @@ async def skip_cron(
 
 async def is_dm_in_command(
         client: AsyncWebClient,
-        channel_id: str,
         channel_name: str,
         user_id: str,
 ) -> bool:
@@ -144,7 +143,6 @@ async def is_dm_in_command(
     Checks if command was used in DM
 
     :param client: AsyncWebClient instance
-    :param channel_id: Slack channel id
     :param channel_name: Slack channel name
     :param user_id: Slack user id
     :return: True if command was used in DM else False
@@ -152,8 +150,12 @@ async def is_dm_in_command(
 
     # Catch if command was used in DM
     if channel_name == "directmessage":  # noqa
-        await client.chat_postEphemeral(
-            channel=channel_id,
+        conversation_info = await client.conversations_open(
+            users=user_id,
+        )
+
+        await client.chat_postMessage(
+            channel=conversation_info["channel"]["id"],
             text=":x: You can't use commands in DMs",
             blocks=error_block(
                 header_text="You can't use commands in DMs",
