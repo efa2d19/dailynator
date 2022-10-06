@@ -144,29 +144,35 @@ def question_list_block(
 
 def error_block(
         header_text: str,
-        body_text: str,
+        body_text: Optional[str] = None,
 ) -> Sequence[Block]:
     """
     Make it look beautiful at least when error occurs
 
     :param header_text: Error summary
-    :param body_text: Error main message
+    :param body_text: Error main message (Optional)
     :return: Error block
     """
 
-    return [
+    blocks = [
         HeaderBlock(
             text=":x:\t" + header_text,
         ),
         DividerBlock(),
-        SectionBlock(
-            fields=[
-                MarkdownTextObject(
-                    text=body_text,
-                )
-            ],
-        ),
     ]
+
+    if body_text is not None:
+        blocks.append(
+            SectionBlock(
+                fields=[
+                    MarkdownTextObject(
+                        text=body_text,
+                    )
+                ],
+            ),
+        )
+
+    return blocks
 
 
 def success_block(
@@ -188,7 +194,7 @@ def success_block(
         DividerBlock(),
     ]
 
-    if body_text:
+    if body_text is not None:
         blocks.insert(
             1,
             SectionBlock(
