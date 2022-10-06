@@ -260,6 +260,10 @@ class Database(Borg):
         )
         questions = await cursor.fetchall()
         await cursor.close()
+
+        if not questions:
+            return list()
+
         return list(chain(*questions))
 
     async def add_channel(
@@ -321,10 +325,20 @@ class Database(Borg):
         :param channel_id: Slack channel id
         """
 
+        from itertools import chain
+
         cursor = await self.db.cursor()
+
+        await cursor.execute(
+            "SELECT ROWID FROM questions WHERE channel_id = ?",
+            [channel_id],
+        )
+
+        rowid_list = list(chain(*(await cursor.fetchall())))
+
         await cursor.execute(
             "DELETE FROM questions WHERE ROWID = ? AND channel_id = ?",
-            [question_rowid, channel_id],
+            [rowid_list[question_rowid - 1], channel_id],
         )
         await self.db.commit()
         await cursor.close()
@@ -367,6 +381,10 @@ class Database(Borg):
         )
         users = await cursor.fetchall()
         await cursor.close()
+
+        if not users:
+            return list()
+
         return list(chain(*users))
 
     async def get_all_cron_with_channels(
@@ -383,6 +401,10 @@ class Database(Borg):
         )
         cron_list = await cursor.fetchall()
         await cursor.close()
+
+        if not cron_list:
+            return list()
+
         return cron_list  # noqa
 
     async def update_cron_by_channel_id(
@@ -522,10 +544,15 @@ class Database(Borg):
             "SELECT cron, team_id FROM channels WHERE channel_id = ?",
             [channel_id],
         )
-        channel_cron = await cursor.fetchone()
+        fetched_data = await cursor.fetchone()
         await cursor.close()
 
-        return channel_cron  # noqa
+        if not fetched_data:
+            return '', ''
+
+        cron, team_id = fetched_data
+
+        return cron, team_id
 
     async def write_daily_ts(
             self,
@@ -558,12 +585,14 @@ class Database(Borg):
             "SELECT user_id, was_mentioned FROM daily WHERE thread_ts = ?",
             [thread_ts],
         )
-        user_id, was_mentioned = await cursor.fetchone()
+        fetched_data = await cursor.fetchone()
         await cursor.close()
 
         # Return None if nothing was found
-        if not user_id:
+        if not fetched_data:
             return None, None
+
+        user_id, was_mentioned = fetched_data
 
         return user_id, was_mentioned
 
