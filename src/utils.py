@@ -4,7 +4,7 @@ from slack_sdk.web.async_client import AsyncWebClient
 from src.db import Database
 from src.block_kit import error_block
 
-default_colors = ["#e8aeb7", "#b8e1ff", "#3c7a89", "#f4d06f", "#82aba1"]
+default_colors = ["#e8aeb7", "#b8e1ff", "#3c7a89", "#82aba1", "#f4d06f"]
 
 
 async def parse_emoji_list(
