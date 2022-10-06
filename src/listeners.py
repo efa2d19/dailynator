@@ -1,16 +1,17 @@
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
-from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name
+from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name, is_not_subscribed
 from src.block_kit import success_block, error_block
-from src.matchers import im_matcher, thread_matcher, commands_channel_subscribed_matcher, \
-    threads_channel_subscribed_matcher, events_channel_subscribed_matcher
+from src.matchers import im_matcher, thread_matcher
 from src.db import Database
 
 from main import app
 from asyncio import gather
 
 
-@app.command("/channel_append")
+@app.command(
+    "/channel_append",
+)
 async def channel_append_listener(
         ack: AsyncAck,
         body: dict,
@@ -35,7 +36,7 @@ async def channel_append_listener(
     db = Database()
 
     # If where aren't channels or channel is not in the list - add channel to the list
-    if await db.check_channel_exist(
+    if not await db.check_channel_exist(
             channel_id=body["channel_id"]
     ):
         # Write channel
@@ -90,7 +91,9 @@ async def channel_append_listener(
     )
 
 
-@app.command("/channel_pop")
+@app.command(
+    "/channel_pop",
+)
 async def channel_pop_listener(
         ack: AsyncAck,
         body: dict,
@@ -159,9 +162,6 @@ async def channel_pop_listener(
 
 @app.event(
     "member_joined_channel",
-    matchers=[
-        events_channel_subscribed_matcher,
-    ],
 )
 async def join_channel_listener(
         ack: AsyncAck,
@@ -172,12 +172,22 @@ async def join_channel_listener(
     Listen for user's joining subscribed channels \n
     """
 
+    await ack()
+
+    # Check if got any subtype
     if body["event"].get("subtype"):
         return
 
-    await ack()
-
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["event"]["channel"],
+            user_id=body["event"]["user"],
+    ):
+        return
 
     # Parse user's real_name and creator_id
     real_name = (
@@ -213,9 +223,6 @@ async def join_channel_listener(
 
 @app.event(
     "member_left_channel",
-    matchers=[
-        events_channel_subscribed_matcher,
-    ],
 )
 async def leave_channel_listener(
         ack: AsyncAck,
@@ -232,6 +239,15 @@ async def leave_channel_listener(
     await ack()
 
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+        client=client,
+        db_connection=db,
+        channel_id=body["event"]["channel"],
+        user_id=body["event"]["user"],
+    ):
+        return
 
     await db.delete_user(
         user_id=body["event"]["user"],
@@ -261,9 +277,6 @@ async def leave_channel_listener(
 
 @app.command(
     "/refresh_users",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def refresh_users_listener(
         ack: AsyncAck,
@@ -287,6 +300,15 @@ async def refresh_users_listener(
         return
 
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+        client=client,
+        db_connection=db,
+        channel_id=body["channel_id"],
+        user_id=body["user_id"],
+    ):
+        return
 
     # Delete all members from database
     await db.delete_users_by_main_channel(
@@ -319,9 +341,6 @@ async def refresh_users_listener(
 
 @app.command(
     "/questions",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def questions_listener(
         ack: AsyncAck,
@@ -345,6 +364,15 @@ async def questions_listener(
         return
 
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
+            user_id=body["user_id"],
+    ):
+        return
 
     question_list = await db.get_all_questions(
         channel_id=body["channel_id"],
@@ -376,9 +404,6 @@ async def questions_listener(
 
 @app.command(
     "/question_append",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def question_append_listener(
         ack: AsyncAck,
@@ -402,6 +427,15 @@ async def question_append_listener(
         return
 
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
+            user_id=body["user_id"],
+    ):
+        return
 
     # If user specified the question add it and notify the user
     if body["text"]:
@@ -434,9 +468,6 @@ async def question_append_listener(
 
 @app.command(
     "/question_pop",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def question_pop_listener(
         ack: AsyncAck,
@@ -460,6 +491,15 @@ async def question_pop_listener(
         return
 
     db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
+            user_id=body["user_id"],
+    ):
+        return
 
     # If user specified the question add it and notify the user
     if body["text"]:
@@ -508,9 +548,6 @@ async def question_pop_listener(
 
 @app.command(
     "/cron",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def cron_listener(
         ack: AsyncAck,
@@ -529,6 +566,17 @@ async def cron_listener(
             client=client,
             channel_id=body["channel_id"],
             channel_name=body["channel_name"],
+            user_id=body["user_id"],
+    ):
+        return
+
+    db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
             user_id=body["user_id"],
     ):
         return
@@ -555,8 +603,6 @@ async def cron_listener(
             user=body["user_id"],
         )
         return
-
-    db = Database()
 
     # Set specified cron to current channel
     await db.update_cron_by_channel_id(
@@ -778,9 +824,6 @@ async def im_listener(
 
 @app.command(
     "/skip_daily",
-    matchers=[
-        commands_channel_subscribed_matcher,
-    ],
 )
 async def skip_daily_listener(
         ack: AsyncAck,
@@ -799,6 +842,17 @@ async def skip_daily_listener(
             client=client,
             channel_id=body["channel_id"],
             channel_name=body["channel_name"],
+            user_id=body["user_id"],
+    ):
+        return
+
+    db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
             user_id=body["user_id"],
     ):
         return
@@ -825,7 +879,6 @@ async def skip_daily_listener(
     "message",
     matchers=[
         thread_matcher,
-        threads_channel_subscribed_matcher,
     ],
 )
 async def thread_listener(

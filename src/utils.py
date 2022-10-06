@@ -273,3 +273,47 @@ async def create_multiple_user_with_real_name(
         )
 
     await gather(*async_tasks)
+
+
+async def notify_not_subscribed(
+        client: AsyncWebClient,
+        channel_id: str,
+        user_id: str,
+) -> None:
+    """
+    Send notification
+
+    :param client: AsyncWebClient instance
+    :param channel_id: Slack channel id
+    :param user_id: Slack user id
+    """
+
+    await client.chat_postEphemeral(
+        channel=channel_id,
+        text="Channel is not subscribed",
+        user=user_id,
+        blocks=error_block(
+            header_text="Channel is not subscribed",
+            body_text="User thi command to subscribe `/channel_append`",
+        ),
+    )
+
+
+async def is_not_subscribed(
+        client: AsyncWebClient,
+        db_connection: Database,
+        channel_id: str,
+        user_id: str,
+) -> bool:
+    if not await db_connection.check_channel_exist(
+            channel_id=channel_id,
+    ):
+        # Notify user
+        await notify_not_subscribed(
+            client=client,
+            channel_id=channel_id,
+            user_id=user_id,
+        )
+
+        return True
+    return False
