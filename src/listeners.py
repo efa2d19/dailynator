@@ -392,6 +392,7 @@ async def questions_listener(
 
     # Send user list to user
     await client.chat_postEphemeral(
+        text="Question list has arrived",
         blocks=question_list_block(
             question_list=[question for question, idx in question_list],
         ),

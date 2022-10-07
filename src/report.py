@@ -3,6 +3,7 @@ from slack_sdk.models.attachments import BlockAttachment
 from slack_sdk.web.async_client import AsyncWebClient
 from asyncio import gather
 
+from src.block_kit import error_block
 from src.db import Database
 
 
@@ -32,6 +33,7 @@ async def post_report(
     # Collect kwargs from params
     kwargs = dict()
     kwargs["channel"] = channel
+    kwargs["text"] = f"{username} has sent daily report"
     kwargs["attachments"] = attachments
     kwargs["username"] = username
     kwargs["icon_url"] = icon_url
@@ -139,8 +141,6 @@ async def start_daily(
     )
 
     if first_question is None:
-        from src.block_kit import error_block
-
         # Notify channel about missing questions
         await app.client.chat_postMessage(
             channel=channel_id,
