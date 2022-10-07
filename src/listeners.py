@@ -393,7 +393,7 @@ async def questions_listener(
     # Send user list to user
     await client.chat_postEphemeral(
         blocks=question_list_block(
-            question_list=question_list,
+            question_list=[question for question, idx in question_list],
         ),
         channel=body["channel_id"],
         user=body["user_id"],
@@ -686,44 +686,54 @@ async def im_listener(
     from src.block_kit import report_attachment_block, end_daily_block
     from src.report import post_report
 
-    # Get user questions index
-    user_idx = await db.get_user_q_idx(
-        user_id=message['user'],
-    )
-
-    # Set 0 if it's not set
-    if not user_idx:
-        user_idx = 1
-
-    # Updated questions index
-    await db.update_user_q_idx(
-        user_id=message['user'],
-        q_idx=user_idx + 1,
-    )
-
-    # Write user's answer
-    await db.set_user_answer(
-        user_id=message['user'],
-        question_id=user_idx,
-        answer=message["text"],
-    )
-
     # Get questions list
     user_main_channel = await db.get_user_main_channel(
         user_id=message["user"],
     )
 
-    questions = await db.get_all_questions(
+    questions_info = await db.get_all_questions(
         channel_id=user_main_channel,
     )
 
-    questions_length: int = len(questions)
+    question_idx_list = [idx for question, idx in questions_info]
+
+    # Get question_list length
+    questions_length: int = len(questions_info)
+
+    # Get user questions index
+    user_idx = await db.get_user_q_idx(
+        user_id=message['user'],
+    )
+
+    if not user_idx:
+        current_question_idx = 1
+    else:
+        current_question_idx = question_idx_list.index(user_idx)
+
+    next_q_idx = question_idx_list[
+        current_question_idx + 1
+        if current_question_idx + 1 < questions_length
+        else 0
+    ]
+
+    # Updated questions index
+    await db.update_user_q_idx(
+        user_id=message["user"],
+        q_idx=next_q_idx,
+    )
+
+    # Write user's answer
+    await db.set_user_answer(
+        user_id=message["user"],
+        question_id=user_idx,  # Get question id
+        answer=message["text"],
+    )
 
     # Update user's daily status if idx is out of range
-    if user_idx == questions_length:
+    if user_idx == question_idx_list[-1]:
         # Delete user's daily status & idx
         await db.reset_user_daily_status(
-            user_id=message['user'],
+            user_id=message["user"],
         )
 
         # Skip if there is no channel
@@ -741,12 +751,12 @@ async def im_listener(
 
         # Get user answers
         user_answers = await db.get_user_answers(
-            user_id=message['user'],
+            user_id=message["user"],
         )
 
         # Delete user's answers from database
         await db.delete_user_answers(
-            user_id=message['user'],
+            user_id=message["user"],
         )
 
         # Collect answers_block
@@ -773,7 +783,7 @@ async def im_listener(
             )
 
         # Get user info
-        user_info = (await client.users_info(user=message['user']))["user"]
+        user_info = (await client.users_info(user=message["user"]))["user"]
 
         # Create channel link
         channel_name, channel_team_id = await db.get_channel_link_info(
@@ -816,10 +826,12 @@ async def im_listener(
         # Exit
         return
 
+    next_question = list(filter(lambda question_info: question_info[1] == next_q_idx, questions_info))[0][0]
+
     # Send question to dm
     await client.chat_postMessage(
         channel=message["channel"],
-        text=">" + questions[user_idx],
+        text=">" + next_question,
         mrkdwn=True,  # Enable markdown
     )
 

@@ -134,7 +134,7 @@ async def start_daily(
     await gather(*async_tasks)
 
     # Get first question
-    first_question = await db.get_first_question(
+    first_question, first_question_idx = await db.get_first_question(
         channel_id=channel_id,
     )
 
@@ -165,6 +165,7 @@ async def start_daily(
         # Set user daily status & delete user's old idx
         await db.start_user_daily_status(
             user_id=user_id,
+            q_idx=first_question_idx,
         )
 
         # Delete old user's answers from Redis
@@ -195,7 +196,7 @@ async def start_daily(
             blocks=start_daily_block(
                 header_text=f"Hey, <@{user_id}>! :sun_with_face: ",
                 body_text="*Daily time has come* :melting_face: ",
-                first_question=first_question
+                first_question=first_question,
             ),
         )
 

@@ -126,7 +126,7 @@ class Database(Borg):
 
             user_status = s.fetchone()
 
-        return user_status[0] if user_status else None
+        return user_status[0] if user_status else None  # noqa
 
     async def get_user_main_channel(
             self,
@@ -153,7 +153,7 @@ class Database(Borg):
 
             user_channel = s.fetchone()
 
-        return user_channel[0] if user_channel else ""
+        return user_channel[0] if user_channel else ""  # noqa
 
     async def get_user_q_idx(
             self,
@@ -180,7 +180,7 @@ class Database(Borg):
 
             user_status = s.fetchone()
 
-        return user_status[0] if user_status else 0
+        return user_status[0] if user_status else 0  # noqa
 
     async def get_user_answers(
             self,
@@ -220,7 +220,7 @@ class Database(Borg):
             return [{"question": "", "answer": "-"}]
 
         keys = ["question", "answer"]
-        return [dict(zip(keys, unit)) for unit in user_answers]
+        return [dict(zip(keys, unit)) for unit in user_answers]  # noqa
 
     async def delete_user_answers(
             self,
@@ -254,7 +254,7 @@ class Database(Borg):
         Write down user answer
 
         :param user_id: Slack user id
-        :param question_id: Question ROWID (for JOINs)
+        :param question_id: Question id (for JOINs)
         :param answer: User answer
         """
 
@@ -317,22 +317,21 @@ class Database(Borg):
     async def get_all_questions(
             self,
             channel_id: str,
-    ) -> list[str, str]:
+    ) -> list[tuple[str, int]]:
         """
         Get all questions from questions table
 
         :param channel_id: Slack channel id
-        :return: List of all questions
+        :return: List of all questions w/ ids (primary key)
         """
-
-        from itertools import chain
 
         async with self.engine.connect() as con:
             con: AsyncConnection
 
             s: AsyncResult = await con.execute(
                 select(
-                    Questions.body
+                    Questions.body,
+                    Questions.id,
                 )
                 .where(
                     Questions.channel_id == channel_id,
@@ -345,9 +344,9 @@ class Database(Borg):
             questions = s.fetchmany(size=1000)
 
         if not questions:
-            return list()
+            return [("", 0)]
 
-        return list(chain(*questions))
+        return questions  # noqa
 
     async def add_channel(
             self,
@@ -433,7 +432,7 @@ class Database(Borg):
 
             raw_rowid_list = s.fetchmany(size=1000)
 
-            rowid_list = list(chain(*raw_rowid_list))
+            rowid_list = list(chain(*raw_rowid_list))  # noqa
 
             # Handle case w/ incorrect question_rowid
             if question_rowid > len(rowid_list):
@@ -499,7 +498,7 @@ class Database(Borg):
         if not users:
             return list()
 
-        return list(chain(*users))
+        return list(chain(*users))  # noqa
 
     async def get_all_cron_with_channels(
             self,
@@ -605,11 +604,13 @@ class Database(Borg):
     async def start_user_daily_status(
             self,
             user_id: str,
+            q_idx: int,
     ) -> None:
         """
         Set user's daily status and q_idx to starting daily values
 
         :param user_id: Slack user id
+        :param q_idx: Index of current question
         """
 
         async with self.engine.begin() as con:
@@ -621,7 +622,7 @@ class Database(Borg):
                     Users.user_id == user_id,
                 )
                 .values(
-                    q_idx=1,
+                    q_idx=q_idx,
                     daily_status=True,
                 )
             )
@@ -629,7 +630,7 @@ class Database(Borg):
     async def get_first_question(
             self,
             channel_id: str,
-    ) -> Optional[str]:
+    ) -> tuple[Optional[str], int]:
         """
         Get first question from the database
 
@@ -641,7 +642,10 @@ class Database(Borg):
             con: AsyncConnection
 
             s: AsyncResult = await con.execute(
-                select(Questions.body)
+                select(
+                    Questions.body,
+                    Questions.id,
+                )
                 .where(
                     Questions.channel_id == channel_id,
                 )
@@ -652,7 +656,12 @@ class Database(Borg):
 
             questions = s.fetchone()
 
-        return questions[0] if questions else None
+        if not questions:
+            return None, 0
+
+        first_question, first_question_idx = questions
+
+        return first_question, first_question_idx
 
     async def get_channel_link_info(
             self,
@@ -776,7 +785,7 @@ class Database(Borg):
                 )
 
         # Return None if nothing was found
-        return user_id[0] if user_id else None
+        return user_id[0] if user_id else None  # noqa
 
 
 if __name__ == "__main__":
