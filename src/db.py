@@ -1,6 +1,10 @@
 from typing import Optional
 
-from asyncpg import create_pool, Connection, Pool
+from sqlalchemy import delete, update, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncConnection, AsyncResult
+
+from src.db_scheme import *
 
 
 class Borg:
@@ -11,31 +15,28 @@ class Borg:
 
 
 class Database(Borg):
-    pool: Pool
+    engine: AsyncEngine
 
     def __init__(
             self,
-            pool: Optional[Pool] = None,
+            engine: Optional[AsyncEngine] = None,
     ) -> None:
         super().__init__()
-        if pool:
-            self.pool = pool
+        if engine:
+            self.engine = engine
         else:
-            if not hasattr(self, "pool"):
-                self.pool = None  # noqa
+            if not hasattr(self, "engine"):
+                self.engine = None  # noqa
 
     async def connect(self) -> None:
         """
         Establish a connection to the database if not already established
         """
 
-        if self.pool is None:
-            self.pool = await create_pool(
-                max_size=100,
-                host="127.0.0.1",
-                port="5432",
-                user="daily",
-                password="bot",
+        if self.engine is None:
+            self.engine = create_async_engine(
+                "postgresql+asyncpg://daily:bot@localhost/daily",
+                echo=True,
             )
 
     async def delete_users_by_main_channel(
@@ -48,10 +49,15 @@ class Database(Borg):
         :param channel_id: Users main_channel_id
         """
 
-        await self.pool.execute(
-            "DELETE FROM users WHERE main_channel_id = $1",
-            channel_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                delete(Users)
+                .where(
+                    Users.main_channel_id == channel_id
+                )
+            )
 
     async def create_user(
             self,
@@ -71,20 +77,29 @@ class Database(Borg):
         :param real_name: User's real name
         """
 
-        await self.pool.execute(
-            """\
-INSERT INTO users (
-    user_id,
-    daily_status,
-    q_idx,
-    main_channel_id,
-    real_name
-) VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (user_id) DO 
-UPDATE SET daily_status = $2, q_idx = $3, main_channel_id = $4, real_name = $5 WHERE users.user_id = $1
-""",
-            user_id, daily_status, q_idx, main_channel_id, real_name,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                insert(Users)
+                .values(
+                    user_id=user_id,
+                    daily_status=daily_status,
+                    q_idx=q_idx,
+                    main_channel_id=main_channel_id,
+                    real_name=real_name,
+                )
+                .on_conflict_do_update(
+                    index_elements=[Users.user_id],
+                    where=Users.user_id == user_id,
+                    set_=dict(
+                        daily_status=daily_status,
+                        q_idx=q_idx,
+                        main_channel_id=main_channel_id,
+                        real_name=real_name,
+                    )
+                )
+            )
 
     async def get_user_status(
             self,
@@ -97,12 +112,21 @@ UPDATE SET daily_status = $2, q_idx = $3, main_channel_id = $4, real_name = $5 W
         :return: Has daily started or not as a bool
         """
 
-        user_status = await self.pool.fetchrow(
-            "SELECT daily_status FROM users WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return user_status.get("daily_status", None)
+            s: AsyncResult = await con.execute(
+                select(
+                    Users.daily_status
+                )
+                .where(
+                    Users.user_id == user_id,
+                )
+            )
+
+            user_status = s.fetchone()
+
+        return user_status[0] if user_status else None
 
     async def get_user_main_channel(
             self,
@@ -115,12 +139,21 @@ UPDATE SET daily_status = $2, q_idx = $3, main_channel_id = $4, real_name = $5 W
         :return: Channel id of user's main channel
         """
 
-        user_channel = await self.pool.fetchrow(
-            "SELECT main_channel_id FROM users WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return user_channel.get("main_channel_id", "")
+            s: AsyncResult = await con.execute(
+                select(
+                    Users.main_channel_id
+                )
+                .where(
+                    Users.user_id == user_id,
+                )
+            )
+
+            user_channel = s.fetchone()
+
+        return user_channel[0] if user_channel else ""
 
     async def get_user_q_idx(
             self,
@@ -133,12 +166,21 @@ UPDATE SET daily_status = $2, q_idx = $3, main_channel_id = $4, real_name = $5 W
         :return: Question index as an int
         """
 
-        user_status = await self.pool.fetchrow(
-            "SELECT q_idx FROM users WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return user_status.get("q_idx", 0)
+            s: AsyncResult = await con.execute(
+                select(
+                    Users.q_idx
+                )
+                .where(
+                    Users.user_id == user_id,
+                )
+            )
+
+            user_status = s.fetchone()
+
+        return user_status[0] if user_status else 0
 
     async def get_user_answers(
             self,
@@ -151,15 +193,28 @@ UPDATE SET daily_status = $2, q_idx = $3, main_channel_id = $4, real_name = $5 W
         :return: List w/ question and answer as a dict
         """
 
-        user_answers = await self.pool.fetch(
-            """\
-SELECT body, answer FROM answers
-LEFT JOIN questions ON answers.question_id = questions.id
-WHERE user_id = $1
-ORDER BY questions.id\
-""",
-            user_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
+
+            s: AsyncResult = await con.execute(
+                select(
+                    Questions.body,
+                    Answers.answer,
+                )
+                .join(
+                    Questions,
+                    Answers.question_id == Questions.id,
+                    isouter=True,
+                )
+                .where(
+                    Answers.user_id == user_id,
+                )
+                .order_by(
+                    Questions.id.asc()
+                )
+            )
+
+            user_answers = s.fetchmany(size=1000)
 
         if not user_answers:
             return [{"question": "", "answer": "-"}]
@@ -177,10 +232,17 @@ ORDER BY questions.id\
         :param user_id: Slack user id
         """
 
-        await self.pool.execute(
-            "DELETE FROM answers WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                delete(
+                    Answers,
+                )
+                .where(
+                    Answers.user_id == user_id,
+                )
+            )
 
     async def set_user_answer(
             self,
@@ -196,10 +258,17 @@ ORDER BY questions.id\
         :param answer: User answer
         """
 
-        await self.pool.execute(
-            "INSERT INTO answers (user_id, question_id, answer) VALUES ($1, $2, $3)",
-            user_id, question_id, answer,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                insert(Answers)
+                .values(
+                    user_id=user_id,
+                    question_id=question_id,
+                    answer=answer,
+                )
+            )
 
     async def delete_user(
             self,
@@ -211,10 +280,15 @@ ORDER BY questions.id\
         :param user_id: Slack user id
         """
 
-        await self.pool.execute(
-            f"DELETE FROM users WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                delete(Users)
+                .where(
+                    Users.user_id == user_id
+                )
+            )
 
     async def check_channel_exist(
             self,
@@ -226,12 +300,19 @@ ORDER BY questions.id\
         :return: Return True if channel exist else False
         """
 
-        channels = await self.pool.fetchrow(
-            "SELECT exists(select 1 FROM channels WHERE channel_id = $1)",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return channels.get("exists", False)
+            s: AsyncResult = await con.execute(
+                select(Channels.channel_id)
+                .filter_by(
+                    channel_id=channel_id,
+                )
+            )
+
+            channels = s.fetchone()
+
+        return channels is not None
 
     async def get_all_questions(
             self,
@@ -246,10 +327,22 @@ ORDER BY questions.id\
 
         from itertools import chain
 
-        questions = await self.pool.fetch(
-            "SELECT body FROM questions WHERE channel_id = $1 ORDER BY id",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
+
+            s: AsyncResult = await con.execute(
+                select(
+                    Questions.body
+                )
+                .where(
+                    Questions.channel_id == channel_id,
+                )
+                .order_by(
+                    Questions.id.asc()
+                )
+            )
+
+            questions = s.fetchmany(size=1000)
 
         if not questions:
             return list()
@@ -275,10 +368,18 @@ ORDER BY questions.id\
         if cron is None:
             cron = ""
 
-        await self.pool.execute(
-            "INSERT INTO channels (channel_id, team_id, channel_name, cron) VALUES ($1, $2, $3, $4)",
-            channel_id, team_id, channel_name, cron,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                insert(Channels)
+                .values(
+                    channel_id=channel_id,
+                    team_id=team_id,
+                    channel_name=channel_name,
+                    cron=cron,
+                )
+            )
 
     async def add_question(
             self,
@@ -292,10 +393,16 @@ ORDER BY questions.id\
         :param question: Question body
         """
 
-        await self.pool.execute(
-            "INSERT INTO questions (channel_id, body) VALUES ($1, $2)",
-            channel_id, question,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                insert(Questions)
+                .values(
+                    channel_id=channel_id,
+                    body=question,
+                )
+            )
 
     async def delete_question(
             self,
@@ -311,21 +418,36 @@ ORDER BY questions.id\
 
         from itertools import chain
 
-        raw_rowid_list = await self.pool.fetch(
-            "SELECT id FROM questions WHERE channel_id = $1 ORDER BY id",
-            channel_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
 
-        rowid_list = list(chain(*raw_rowid_list))
+            s: AsyncResult = await con.execute(
+                select(Questions.id)
+                .where(
+                    Questions.channel_id == channel_id
+                )
+                .order_by(
+                    Questions.id.asc()
+                )
+            )
 
-        # Handle case w/ incorrect question_rowid
-        if question_rowid > len(rowid_list):
-            return
+            raw_rowid_list = s.fetchmany(size=1000)
 
-        await self.pool.execute(
-            "DELETE FROM questions WHERE id = $1 AND channel_id = $2",
-            rowid_list[question_rowid - 1], channel_id,
-        )
+            rowid_list = list(chain(*raw_rowid_list))
+
+            # Handle case w/ incorrect question_rowid
+            if question_rowid > len(rowid_list):
+                return
+
+            await con.execute(
+                delete(
+                    Questions
+                )
+                .where(
+                    Questions.id == rowid_list[question_rowid - 1],
+                    Questions.channel_id == channel_id,
+                )
+            )
 
     async def delete_channel(
             self,
@@ -337,10 +459,15 @@ ORDER BY questions.id\
         :param channel_id: Slack channel id
         """
 
-        await self.pool.execute(
-            "DELETE FROM channels WHERE channel_id = $1",
-            channel_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                delete(Channels)
+                .where(
+                    Channels.channel_id == channel_id,
+                )
+            )
 
     async def get_all_users_by_channel_id(
             self,
@@ -355,10 +482,19 @@ ORDER BY questions.id\
 
         from itertools import chain
 
-        users = await self.pool.fetch(
-            "SELECT user_id FROM users WHERE main_channel_id = $1",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
+
+            s: AsyncResult = await con.execute(
+                select(
+                    Users.user_id
+                )
+                .where(
+                    Users.main_channel_id == channel_id,
+                )
+            )
+
+            users = s.fetchmany(size=1000)
 
         if not users:
             return list()
@@ -374,9 +510,18 @@ ORDER BY questions.id\
         :return: Sequence of channel_id, team_id & cron in sets
         """
 
-        cron_list = await self.pool.fetch(
-            "SELECT channel_id, team_id, cron FROM channels"
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
+
+            s: AsyncResult = await con.execute(
+                select(
+                    Channels.channel_id,
+                    Channels.team_id,
+                    Channels.cron,
+                )
+            )
+
+            cron_list = s.fetchmany(size=1000)
 
         if not cron_list:
             return list()
@@ -390,14 +535,23 @@ ORDER BY questions.id\
     ) -> None:
         """
         Update cron for the specified channel
+
         :param channel_id: Slack channel id
         :param cron: Daily meeting cron
         """
 
-        await self.pool.execute(
-            "UPDATE channels SET cron = $1 WHERE channel_id = $2",
-            cron, channel_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                update(Channels)
+                .where(
+                    Channels.channel_id == channel_id,
+                )
+                .values(
+                    cron=cron,
+                )
+            )
 
     async def update_user_q_idx(
             self,
@@ -411,10 +565,18 @@ ORDER BY questions.id\
         :param q_idx: User's current question id
         """
 
-        await self.pool.execute(
-            "UPDATE users SET q_idx = $1 WHERE user_id = $2",
-            q_idx, user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                update(Users)
+                .where(
+                    Users.user_id == user_id,
+                )
+                .values(
+                    q_idx=q_idx,
+                )
+            )
 
     async def reset_user_daily_status(
             self,
@@ -426,10 +588,19 @@ ORDER BY questions.id\
         :param user_id: Slack user id
         """
 
-        await self.pool.execute(
-            "UPDATE users SET q_idx = 0, daily_status = FALSE WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                update(Users)
+                .where(
+                    Users.user_id == user_id,
+                )
+                .values(
+                    q_idx=0,
+                    daily_status=False,
+                )
+            )
 
     async def start_user_daily_status(
             self,
@@ -441,10 +612,19 @@ ORDER BY questions.id\
         :param user_id: Slack user id
         """
 
-        await self.pool.execute(
-            "UPDATE users SET q_idx = 1, daily_status = TRUE WHERE user_id = $1",
-            user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                update(Users)
+                .where(
+                    Users.user_id == user_id,
+                )
+                .values(
+                    q_idx=1,
+                    daily_status=True,
+                )
+            )
 
     async def get_first_question(
             self,
@@ -457,12 +637,22 @@ ORDER BY questions.id\
         :return: First question from the database as a string
         """
 
-        questions = await self.pool.fetchrow(
-            "SELECT body FROM questions WHERE channel_id = $1 ORDER BY id",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return questions.get("body", None)
+            s: AsyncResult = await con.execute(
+                select(Questions.body)
+                .where(
+                    Questions.channel_id == channel_id,
+                )
+                .order_by(
+                    Questions.id.asc()
+                )
+            )
+
+            questions = s.fetchone()
+
+        return questions[0] if questions else None
 
     async def get_channel_link_info(
             self,
@@ -475,12 +665,27 @@ ORDER BY questions.id\
         :return: Set w/ channel name & team_id
         """
 
-        channel_info = await self.pool.fetchrow(
-            "SELECT channel_name, team_id FROM channels WHERE channel_id = $1",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
 
-        return channel_info  # noqa
+            s: AsyncResult = await con.execute(
+                select(
+                    Channels.channel_name,
+                    Channels.team_id,
+                )
+                .where(
+                    Channels.channel_id == channel_id,
+                )
+            )
+
+            db_response = s.fetchone()
+
+            if not db_response:
+                return "", ""
+
+            channel_name, team_id = db_response
+
+        return channel_name, team_id
 
     async def get_cron_by_channel_id(
             self,
@@ -493,10 +698,20 @@ ORDER BY questions.id\
         :return: Set of cron and team_id
         """
 
-        fetched_data = await self.pool.fetchrow(
-            "SELECT cron, team_id FROM channels WHERE channel_id = $1",
-            channel_id,
-        )
+        async with self.engine.connect() as con:
+            con: AsyncConnection
+
+            s: AsyncResult = await con.execute(
+                select(
+                    Channels.cron,
+                    Channels.team_id,
+                )
+                .where(
+                    Channels.channel_id == channel_id,
+                )
+            )
+
+            fetched_data = s.fetchone()
 
         if not fetched_data:
             return '', ''
@@ -517,10 +732,16 @@ ORDER BY questions.id\
         :param user_id: Slack user id
         """
 
-        await self.pool.execute(
-            "INSERT INTO daily (thread_ts, user_id) VALUES ($1, $2)",
-            ts, user_id,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
+
+            await con.execute(
+                insert(Daily)
+                .values(
+                    thread_ts=ts,
+                    user_id=user_id,
+                )
+            )
 
     async def get_user_id_by_thread_ts(
             self,
@@ -533,20 +754,29 @@ ORDER BY questions.id\
         :return: Slack user id if thread was found else None
         """
 
-        user_id = await self.pool.fetchrow(
-            "SELECT user_id FROM daily WHERE thread_ts = $1",
-            thread_ts,
-        )
+        async with self.engine.begin() as con:
+            con: AsyncConnection
 
-        # Delete entry if found one
-        if user_id:
-            await self.pool.execute(
-                "DELETE FROM daily WHERE thread_ts = $1",
-                thread_ts,
+            s: AsyncResult = await con.execute(
+                select(Daily.user_id)
+                .where(
+                    Daily.thread_ts == thread_ts,
+                )
             )
 
+            user_id = s.fetchone()
+
+            # Delete entry if found one
+            if user_id:
+                await con.execute(
+                    delete(Daily)
+                    .where(
+                        Daily.thread_ts == thread_ts,
+                    )
+                )
+
         # Return None if nothing was found
-        return user_id.get("user_id", None)
+        return user_id[0] if user_id else None
 
 
 if __name__ == "__main__":

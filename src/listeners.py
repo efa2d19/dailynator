@@ -382,7 +382,7 @@ async def questions_listener(
             text=":x: None question available",
             blocks=error_block(
                 header_text="None question available",
-                body_text="Add some with `/question_append <your_daily_question>`",
+                body_text="Add some with\n`/question_append <your_daily_question>`",
             ),
             user=body["user_id"],
         )
@@ -457,7 +457,7 @@ async def question_append_listener(
         text=":x: Question wasn't entered",
         blocks=error_block(
             header_text="Question wasn't entered",
-            body_text="Enter the question after the command\nExample: `/question_append <your_question>`",
+            body_text="Enter the question after the command\nExample:\n `/question_append <your_question>`",
         ),
         user=body["user_id"],
     )
