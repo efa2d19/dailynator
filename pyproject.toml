@@ -12,8 +12,8 @@ slack-bolt = "^1.14.3"
 aiohttp = "^3.8.1"
 APScheduler = "^3.9.1"
 websockets = "^10.3"
-aiosqlite = "^0.17.0"
 tzdata = "^2022.4"
+asyncpg = "^0.26.0"
 
 
 [tool.poetry.group.dev.dependencies]

@@ -52,7 +52,6 @@ async def post_report(
     await db_connection.write_daily_ts(
         ts=message_response["ts"],
         user_id=user_id,
-        was_mentioned=False,
     )
 
 

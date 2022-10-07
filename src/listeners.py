@@ -119,19 +119,6 @@ async def channel_pop_listener(
     if await db.check_channel_exist(
             channel_id=body["channel_id"],
     ):
-        await db.delete_channel(
-            channel_id=body["channel_id"],
-        )
-
-        await client.chat_postEphemeral(
-            channel=body["channel_id"],
-            text=":white_check_mark: Channel has been successfully unsubscribed",
-            blocks=success_block(
-                header_text="Channel has been successfully unsubscribed",
-            ),
-            user=body["user_id"],
-        )
-
         # Delete all members except for bots
         await db.delete_users_by_main_channel(
             channel_id=body["channel_id"],
@@ -145,6 +132,21 @@ async def channel_pop_listener(
             ),
             user=body["user_id"],
         )
+
+        # Unsubscribe from the channel
+        await db.delete_channel(
+            channel_id=body["channel_id"],
+        )
+
+        await client.chat_postEphemeral(
+            channel=body["channel_id"],
+            text=":white_check_mark: Channel has been successfully unsubscribed",
+            blocks=success_block(
+                header_text="Channel has been successfully unsubscribed",
+            ),
+            user=body["user_id"],
+        )
+
         return
 
     # Trash talk if bot is already left
@@ -343,7 +345,6 @@ async def questions_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
-        context,
 ):
     """
     Listen for command questions in subscribed channels \n
