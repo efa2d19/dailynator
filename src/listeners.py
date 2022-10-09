@@ -609,10 +609,17 @@ async def cron_listener(
         )
         return
 
+    user_tz = (
+        await app.client.users_info(
+            user=body["user_id"],
+        )
+    )["user"]["tz"]
+
     # Set specified cron to current channel
     await db.update_cron_by_channel_id(
         channel_id=body["channel_id"],
         cron=body["text"],
+        cron_tz=user_tz,
     )
 
     from src.utils import start_cron

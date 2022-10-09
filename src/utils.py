@@ -33,13 +33,14 @@ async def start_cron(
     from main import scheduler, app
     from src.report import start_daily
     from src.db import Database
+    from zoneinfo import ZoneInfo
 
     db = Database()
 
     # Get current cron as str
     cron_list = await db.get_all_cron_with_channels()
 
-    for channel_id, team_id, cron in cron_list:
+    for channel_id, team_id, cron, cron_tz in cron_list:
         # Skip if cron not set
         if not cron:
             await app.client.chat_postMessage(
@@ -50,10 +51,14 @@ async def start_cron(
                     body_text="Use this to add schedule\n`/cron <* * * * *>`",
                 ),
             )
+
             return
 
         # Get an instance of CronTrigger
-        cron_trigger = CronTrigger().from_crontab(cron)
+        cron_trigger = CronTrigger().from_crontab(
+            expr=cron,
+            timezone=ZoneInfo(key=cron_tz),
+        )
 
         # Schedule a job
         scheduler.add_job(

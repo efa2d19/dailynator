@@ -32,6 +32,11 @@ class Channels(Base):
         String(),
     )
 
+    cron_tz = Column(
+        "cron_tz",
+        String(),
+    )
+
 
 class Users(Base):
     __tablename__ = "users"

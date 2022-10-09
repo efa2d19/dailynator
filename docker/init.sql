@@ -4,7 +4,8 @@ CREATE TABLE channels (
     channel_id VARCHAR(20) PRIMARY KEY,
     team_id VARCHAR(20) NOT NULL,
     channel_name VARCHAR NOT NULL,
-    cron VARCHAR
+    cron VARCHAR,
+    cron_tz VARCHAR
 );
 
 CREATE TABLE users (
@@ -17,7 +18,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE questions (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     channel_id VARCHAR(20) NOT NULL,
     body VARCHAR not null,
     FOREIGN KEY (channel_id) REFERENCES channels (channel_id)

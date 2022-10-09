@@ -7,6 +7,7 @@ from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime
 from src.utils import start_cron
 
 # Establish logging level
@@ -18,7 +19,9 @@ basicConfig(
 app = AsyncApp()
 
 # Async scheduler instance
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(
+    timezone=datetime.now().astimezone().tzinfo,
+)
 
 
 async def main():

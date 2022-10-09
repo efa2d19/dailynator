@@ -353,7 +353,6 @@ class Database(Borg):
             channel_id: str,
             team_id: str,
             channel_name: str,
-            cron: Optional[str] = None,
     ) -> None:
         """
         Add or edit channel in the channels table
@@ -361,11 +360,7 @@ class Database(Borg):
         :param channel_id: Slack channel id
         :param team_id: Slack workspace team id
         :param channel_name: Slack channel name
-        :param cron: Channel's daily cron (can be None if not set yet)
         """
-
-        if cron is None:
-            cron = ""
 
         async with self.engine.begin() as con:
             con: AsyncConnection
@@ -376,7 +371,6 @@ class Database(Borg):
                     channel_id=channel_id,
                     team_id=team_id,
                     channel_name=channel_name,
-                    cron=cron,
                 )
             )
 
@@ -517,6 +511,7 @@ class Database(Borg):
                     Channels.channel_id,
                     Channels.team_id,
                     Channels.cron,
+                    Channels.cron_tz,
                 )
             )
 
@@ -531,12 +526,14 @@ class Database(Borg):
             self,
             channel_id: str,
             cron: str,
+            cron_tz: str,
     ) -> None:
         """
         Update cron for the specified channel
 
         :param channel_id: Slack channel id
         :param cron: Daily meeting cron
+        :param cron_tz: User's tz info
         """
 
         async with self.engine.begin() as con:
@@ -549,6 +546,7 @@ class Database(Borg):
                 )
                 .values(
                     cron=cron,
+                    cron_tz=cron_tz,
                 )
             )
 
