@@ -35,7 +35,7 @@ class Database(Borg):
 
         if self.engine is None:
             self.engine = create_async_engine(
-                "postgresql+asyncpg://daily:bot@localhost/daily",
+                "postgresql+asyncpg://daily:bot@postgres/daily",
                 echo=True,
             )
 

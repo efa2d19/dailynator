@@ -11,25 +11,25 @@ class Channels(Base):
 
     channel_id = Column(
         "channel_id",
-        String,
+        String(length=20),
         primary_key=True,
     )
 
     team_id = Column(
         "team_id",
-        String,
+        String(20),
         nullable=False,
     )
 
     channel_name = Column(
         "channel_name",
-        String,
+        String(),
         nullable=False,
     )
 
     cron = Column(
         "cron",
-        String,
+        String(),
     )
 
 
@@ -38,20 +38,20 @@ class Users(Base):
 
     user_id = Column(
         "user_id",
-        String,
+        String(20),
         primary_key=True,
     )
 
     daily_status = Column(
         "daily_status",
-        AsyncpgBoolean,
+        AsyncpgBoolean(),
         nullable=False,
         default=False,
     )
 
     q_idx = Column(
         "q_idx",
-        AsyncpgInteger,
+        AsyncpgInteger(),
     )
 
     main_channel_id = Column(
@@ -61,7 +61,7 @@ class Users(Base):
 
     real_name = Column(
         "real_name",
-        String,
+        String(),
         nullable=False,
     )
 
@@ -71,7 +71,7 @@ class Questions(Base):
 
     id = Column(
         "id",
-        AsyncpgInteger,
+        AsyncpgInteger(),
         primary_key=True,
     )
 
@@ -83,7 +83,7 @@ class Questions(Base):
 
     body = Column(
         "body",
-        String,
+        String(),
         nullable=False,
     )
 
@@ -93,7 +93,7 @@ class Answers(Base):
 
     id = Column(
         "id",
-        AsyncpgInteger,
+        AsyncpgInteger(),
         primary_key=True,
     )
 
@@ -111,7 +111,7 @@ class Answers(Base):
 
     answer = Column(
         "answer",
-        String,
+        String(),
         nullable=False,
     )
 
@@ -121,7 +121,7 @@ class Daily(Base):
 
     thread_ts = Column(
         "thread_ts",
-        String,
+        String(length=16),
         primary_key=True,
     )
 

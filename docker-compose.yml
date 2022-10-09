@@ -1,0 +1,35 @@
+version: "3.9"
+services:
+  postgres:
+    container_name: db_container
+    image: "postgres:14.5-alpine"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-daily}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot}
+      POSTGRES_DB: daily
+    volumes:
+      - pg_volume:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  daily_bot:
+    container_name: bot_container
+    build:
+      dockerfile: docker/bot.Dockerfile
+    environment:
+      DATABASE_HOST: postgres
+      SLACK_BOT_TOKEN: xoxb-
+      SLACK_APP_TOKEN: xapp-
+      USE_AVATARS: False
+      DEVELOPMENT: False
+    volumes:
+      - bot_volume:/dailynator
+    links:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+    pg_volume: {}
+    bot_volume: {}

@@ -43,7 +43,5 @@ if __name__ == "__main__":
     run(main())
 
 # TODO: add logging everywhere (+ write to a file)
-# TODO: add try catch wrapper w/ logger inside
-# TODO: write dockerfile
 # TODO: add change my report button in end daily block
 # TODO: add use last, skip, out of office in start daily block
