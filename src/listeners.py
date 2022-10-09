@@ -372,11 +372,13 @@ async def questions_listener(
     ):
         return
 
-    question_list = await db.get_all_questions(
+    question_info = await db.get_all_questions(
         channel_id=body["channel_id"],
     )
 
-    if not len(question_list):
+    question_list = [question for question, idx in question_info if question]
+
+    if not question_list:
         await client.chat_postEphemeral(
             channel=body["channel_id"],
             text=":x: None question available",
@@ -394,7 +396,7 @@ async def questions_listener(
     await client.chat_postEphemeral(
         text="Question list has arrived",
         blocks=question_list_block(
-            question_list=[question for question, idx in question_list],
+            question_list=question_list,
         ),
         channel=body["channel_id"],
         user=body["user_id"],

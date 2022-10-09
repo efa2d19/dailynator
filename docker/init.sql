@@ -1,3 +1,5 @@
+-- initial migration
+
 CREATE TABLE channels (
     channel_id VARCHAR(20) PRIMARY KEY,
     team_id VARCHAR(20) NOT NULL,

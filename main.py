@@ -1,7 +1,6 @@
 from asyncio import run
 
 from os import getenv
-from dotenv import load_dotenv  # TODO: remove when dockerfile is ready
 from logging import basicConfig, DEBUG, ERROR
 
 from slack_bolt.async_app import AsyncApp
@@ -10,10 +9,10 @@ from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from src.utils import start_cron
 
-load_dotenv()  # TODO: remove when dockerfile is ready
-
 # Establish logging level
-basicConfig(level=DEBUG if getenv("DEVELOPMENT", None) else ERROR)
+basicConfig(
+    level=DEBUG if getenv("DEVELOPMENT", "").lower() == "true" else ERROR,
+)
 
 # Async App instance
 app = AsyncApp()
@@ -42,6 +41,6 @@ async def main():
 if __name__ == "__main__":
     run(main())
 
-# TODO: add logging everywhere (+ write to a file)
+# TODO: add logging everywhere
 # TODO: add change my report button in end daily block
 # TODO: add use last, skip, out of office in start daily block
