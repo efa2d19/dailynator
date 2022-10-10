@@ -33,7 +33,7 @@ async def post_report(
     # Collect kwargs from params
     kwargs = dict()
     kwargs["channel"] = channel
-    kwargs["text"] = f"{username} has sent daily report"
+    kwargs["text"] = f"<@{user_id}> has sent daily report"
     kwargs["attachments"] = attachments
     kwargs["username"] = username
     kwargs["icon_url"] = icon_url
