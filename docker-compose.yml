@@ -22,14 +22,16 @@ services:
       DATABASE_HOST: postgres
       SLACK_BOT_TOKEN: xoxb-
       SLACK_APP_TOKEN: xapp-
-      USE_AVATARS: False
+      USE_AVATARS: True
       DEVELOPMENT: False
     volumes:
       - bot_volume:/dailynator
     links:
       - postgres
+    depends_on:
+      - postgres
     restart: unless-stopped
 
 volumes:
-    pg_volume: {}
-    bot_volume: {}
+  pg_volume: { }
+  bot_volume: { }

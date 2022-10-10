@@ -9,6 +9,7 @@ from src.db import Database
 
 from main import app
 from asyncio import gather
+from logging import Logger
 
 
 @app.command(
@@ -18,6 +19,7 @@ async def channel_append_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ) -> None:
     """
     Listen for channel_append command in channel bot was added to \n
@@ -25,6 +27,9 @@ async def channel_append_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/channel_append: Command was acknowledged\n Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -99,6 +104,7 @@ async def channel_pop_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for channel_pop command in channel bot was added to \n
@@ -106,6 +112,10 @@ async def channel_pop_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/channel_pop: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -284,6 +294,7 @@ async def refresh_users_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for command refresh_users in subscribed channels \n
@@ -291,6 +302,10 @@ async def refresh_users_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/refresh_users: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -412,6 +427,7 @@ async def question_append_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for command question_append in subscribed channels \n
@@ -419,6 +435,10 @@ async def question_append_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/question_append: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -475,6 +495,7 @@ async def question_pop_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for command question_pop in subscribed channels \n
@@ -482,6 +503,10 @@ async def question_pop_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/question_pop: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -506,7 +531,7 @@ async def question_pop_listener(
     if body["text"]:
         if (
                 not body["text"].isdigit()
-                or len((await db.get_all_questions(channel_id=body["channel_id"]))) < int(body["text"])
+                or len((await db.get_all_questions(channel_id=body["channel_id"]))) < int(body["text"]) <= 0
         ):
             await client.chat_postEphemeral(
                 channel=body["channel_id"],
@@ -557,6 +582,7 @@ async def cron_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for command cron in subscribed channels \n
@@ -564,6 +590,10 @@ async def cron_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/cron: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -867,6 +897,7 @@ async def skip_daily_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
+        logger: Logger,
 ):
     """
     Listen for command skip_daily in subscribed channels \n
@@ -874,6 +905,10 @@ async def skip_daily_listener(
     """
 
     await ack()
+    logger.warning(
+        f"/skip_daily: Command was acknowledged\n"
+        f"Channel: {body['channel_name']}\tUser: {body['user_id']}"
+    )
 
     # Catch if command was used in DM
     if await is_dm_in_command(
@@ -909,7 +944,8 @@ async def skip_daily_listener(
         blocks=success_block(
             header_text="Next daily has been successfully skipped",
             body_text=f"<@{body['user_id']}> skipped next daily\n"
-                      f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* `UTC+0`",  # noqa
+                      f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* "
+                      f"`UTC+0`",
         ),
     )
 
