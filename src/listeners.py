@@ -636,9 +636,9 @@ async def cron_listener(
     await start_cron()
 
     # Get next trigger time from CronTrigger
-    cron_trigger_next_fire_time = cron_trigger.get_next_fire_time(
-        previous_fire_time=datetime.now().astimezone(),
-        now=datetime.now().astimezone(),
+    cron_trigger_next_fire_time_in_user_tz = cron_trigger.get_next_fire_time(
+        previous_fire_time=datetime.now().astimezone(tz=user_tz_info),
+        now=datetime.now().astimezone(tz=user_tz_info),
     )
 
     # Post notification on success
@@ -647,7 +647,9 @@ async def cron_listener(
         text=":white_check_mark: Cron was updated",
         blocks=success_block(
             header_text="Cron was updated",
-            body_text=f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=user_tz_info).ctime()}*",
+            body_text=
+            f":fire: Next fire: *{cron_trigger_next_fire_time_in_user_tz.ctime()}* "
+            f"`UTC{cron_trigger_next_fire_time_in_user_tz.tzname()}`",
         ),
         user=body["user_id"],
     )
