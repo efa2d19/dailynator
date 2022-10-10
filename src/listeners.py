@@ -644,9 +644,9 @@ async def cron_listener(
     # Post notification on success
     await client.chat_postEphemeral(
         channel=body["channel_id"],
-        text=":white_check_mark: Cron was updated",
+        text=":white_check_mark: Cron has been updated",
         blocks=success_block(
-            header_text="Cron was updated",
+            header_text="Cron has been updated",
             body_text=
             f":fire: Next fire: *{cron_trigger_next_fire_time_in_user_tz.ctime()}* "
             f"`UTC{cron_trigger_next_fire_time_in_user_tz.tzname()}`",
@@ -908,9 +908,9 @@ async def skip_daily_listener(
     # Notify channel about skipped daily
     await client.chat_postMessage(
         channel=body["channel_id"],
-        text=":white_check_mark: Daily was skipped",
+        text=":white_check_mark: Daily has been skipped",
         blocks=success_block(
-            header_text="Next daily was successfully skipped",
+            header_text="Next daily has been successfully skipped",
             body_text=
             f"<@{body['user_id']}> skipped next daily\n"
             f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* `UTC+0`",
