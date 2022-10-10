@@ -1,3 +1,6 @@
+"""Async event matchers"""
+
+
 async def im_matcher(
         message: dict,
 ) -> bool:

@@ -1,3 +1,5 @@
+"""Daily bot main file"""
+
 from asyncio import run
 
 from os import getenv

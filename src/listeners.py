@@ -1,3 +1,5 @@
+"""Async event listeners"""
+
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
 from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name, is_not_subscribed

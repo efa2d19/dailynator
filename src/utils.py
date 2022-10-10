@@ -1,3 +1,5 @@
+"""Util functions for all kind of situations"""
+
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from slack_sdk.web.async_client import AsyncWebClient
 from apscheduler.triggers.cron import CronTrigger

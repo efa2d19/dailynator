@@ -1,3 +1,5 @@
+"""Utils for posting and collecting reports"""
+
 from typing import Sequence
 from slack_sdk.models.attachments import BlockAttachment
 from slack_sdk.web.async_client import AsyncWebClient

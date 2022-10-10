@@ -1,3 +1,5 @@
+"""Database connection async calls"""
+
 from typing import Optional
 
 from sqlalchemy import delete, update, select

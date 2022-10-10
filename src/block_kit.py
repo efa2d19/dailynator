@@ -1,3 +1,5 @@
+"""Block kit templates"""
+
 from typing import Sequence, Optional
 
 from slack_sdk.models.blocks import Block

@@ -1,3 +1,5 @@
+"""Database schemes"""
+
 from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.dialects.postgresql.asyncpg import AsyncpgBoolean, AsyncpgInteger
 
