@@ -242,10 +242,10 @@ async def leave_channel_listener(
 
     # Check if not subscribed
     if await is_not_subscribed(
-        client=client,
-        db_connection=db,
-        channel_id=body["event"]["channel"],
-        user_id=body["event"]["user"],
+            client=client,
+            db_connection=db,
+            channel_id=body["event"]["channel"],
+            user_id=body["event"]["user"],
     ):
         return
 
@@ -302,10 +302,10 @@ async def refresh_users_listener(
 
     # Check if not subscribed
     if await is_not_subscribed(
-        client=client,
-        db_connection=db,
-        channel_id=body["channel_id"],
-        user_id=body["user_id"],
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
+            user_id=body["user_id"],
     ):
         return
 
@@ -504,11 +504,7 @@ async def question_pop_listener(
     if body["text"]:
         if (
                 not body["text"].isdigit()
-                or len((
-                    await db.get_all_questions(
-                        channel_id=body["channel_id"],
-                    ))
-                ) < int(body["text"])
+                or len((await db.get_all_questions(channel_id=body["channel_id"]))) < int(body["text"])
         ):
             await client.chat_postEphemeral(
                 channel=body["channel_id"],
@@ -647,9 +643,8 @@ async def cron_listener(
         text=":white_check_mark: Cron has been updated",
         blocks=success_block(
             header_text="Cron has been updated",
-            body_text=
-            f":fire: Next fire: *{cron_trigger_next_fire_time_in_user_tz.ctime()}* "
-            f"`UTC{cron_trigger_next_fire_time_in_user_tz.tzname()}`",
+            body_text=f":fire: Next fire: *{cron_trigger_next_fire_time_in_user_tz.ctime()}* "
+                      f"`UTC{cron_trigger_next_fire_time_in_user_tz.tzname()}`",
         ),
         user=body["user_id"],
     )
@@ -793,7 +788,7 @@ async def im_listener(
         if questions_length > len(default_colors):
             from math import ceil
 
-            default_colors = default_colors * ceil(questions_length / len(default_colors))
+            default_colors *= ceil(questions_length / len(default_colors))
 
         for idx, user_set in enumerate(user_answers):
             # Check for skips in user answers
@@ -911,9 +906,8 @@ async def skip_daily_listener(
         text=":white_check_mark: Daily has been skipped",
         blocks=success_block(
             header_text="Next daily has been successfully skipped",
-            body_text=
-            f"<@{body['user_id']}> skipped next daily\n"
-            f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* `UTC+0`",
+            body_text=f"<@{body['user_id']}> skipped next daily\n"
+                      f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* `UTC+0`",  # noqa
         ),
     )
 

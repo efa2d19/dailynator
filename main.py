@@ -24,7 +24,11 @@ scheduler = AsyncIOScheduler(
 )
 
 
-async def main():
+async def main() -> None:
+    """
+    Launches the bot
+    """
+
     import src.listeners as listeners
     from src.db import Database
 
@@ -47,3 +51,8 @@ if __name__ == "__main__":
 # TODO: add logging everywhere
 # TODO: add change my report button in end daily block
 # TODO: add use last, skip, out of office in start daily block
+# TODO: add /help + add it to /channel_append
+# TODO add /show_unanswered_users
+# TODO: add /start_daily
+# TODO add message_changed listener
+# TODO add help im first daily message

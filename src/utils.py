@@ -14,9 +14,8 @@ async def parse_emoji_list(
 ) -> list[str]:
     """
     Returns a list of emoji names
-
-    :param app: App instance
-    :return: List of all emoji names
+        :param app: App instance
+        :return: List of all emoji names
     """
 
     emoji_r: AsyncSlackResponse = await app.emoji_list()
@@ -148,11 +147,10 @@ async def is_dm_in_command(
 ) -> bool:
     """
     Checks if command was used in DM
-
-    :param client: AsyncWebClient instance
-    :param channel_name: Slack channel name
-    :param user_id: Slack user id
-    :return: True if command was used in DM else False
+        :param client: AsyncWebClient instance
+        :param channel_name: Slack channel name
+        :param user_id: Slack user id
+        :return: True if command was used in DM else False
     """
 
     # Catch if command was used in DM
@@ -181,10 +179,9 @@ async def all_non_bot_members(
 ) -> list[str]:
     """
     Get all non bot members of the channel
-
-    :param client: AsyncWebClient instance
-    :param channel_id: Slack channel id
-    :return: List of all non bot members
+        :param client: AsyncWebClient instance
+        :param channel_id: Slack channel id
+        :return: List of all non bot members
     """
 
     from asyncio import gather
@@ -203,8 +200,7 @@ async def all_non_bot_members(
     ) -> None:
         """
         Wrapper for async check if member is bot and populating member list
-
-        :param user_id: Slack channel id
+            :param user_id: Slack channel id
         """
         if not (await client.users_info(user=user_id))["user"]["is_bot"]:
             member_list.append(user_id)
@@ -231,18 +227,17 @@ async def create_user_with_real_name(
 ) -> None:
     """
     Wrapper for async creating new user in database w/ real_name
-
-    :param client: ASyncWebClient instance
-    :param db_connection: Database connection instance
-    :param user_id: Slack user id
-    :param channel_id: Slack channel id
+        :param client: ASyncWebClient instance
+        :param db_connection: Database connection instance
+        :param user_id: Slack user id
+        :param channel_id: Slack channel id
     """
 
     real_name = (
-            await client.users_info(
-                user=user_id,
-            )
-        )["user"]["real_name"]
+        await client.users_info(
+            user=user_id,
+        )
+    )["user"]["real_name"]
 
     await db_connection.create_user(
         user_id=user_id,
@@ -261,11 +256,10 @@ async def create_multiple_user_with_real_name(
 ) -> None:
     """
     Create lots new users in database w/ real_name
-
-    :param client: AsyncWebClient
-    :param db_connection: Database connection instance
-    :param channel_id: Slack channel id
-    :param member_list: List of users to be created
+        :param client: AsyncWebClient
+        :param db_connection: Database connection instance
+        :param channel_id: Slack channel id
+        :param member_list: List of users to be created
     """
 
     from asyncio import gather
@@ -291,10 +285,9 @@ async def notify_not_subscribed(
 ) -> None:
     """
     Send notification
-
-    :param client: AsyncWebClient instance
-    :param channel_id: Slack channel id
-    :param user_id: Slack user id
+        :param client: AsyncWebClient instance
+        :param channel_id: Slack channel id
+        :param user_id: Slack user id
     """
 
     await client.chat_postEphemeral(
@@ -314,6 +307,14 @@ async def is_not_subscribed(
         channel_id: str,
         user_id: str,
 ) -> bool:
+    """
+    Matcher for subscribed channel, notifies user about channel subscription status if not subscribed
+        :param client: AsyncWebClient instance
+        :param db_connection: Database connection instance
+        :param channel_id: Slack channel id
+        :param user_id: Slack user id
+        :return: True if channel is subscribed else False and post ephemeral message
+    """
     if not await db_connection.check_channel_exist(
             channel_id=channel_id,
     ):

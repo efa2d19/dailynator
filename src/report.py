@@ -18,14 +18,13 @@ async def post_report(
 ) -> None:
     """
     Posts a report to the specified channel
-
-    :param app: Async App instance
-    :param db_connection: Database connection instance
-    :param channel: Channel id
-    :param user_id: Slack user id
-    :param attachments: Sequence of attachments
-    :param username: Custom username
-    :param icon_url: Custom icon url
+        :param app: Async App instance
+        :param db_connection: Database connection instance
+        :param channel: Channel id
+        :param user_id: Slack user id
+        :param attachments: Sequence of attachments
+        :param username: Custom username
+        :param icon_url: Custom icon url
     """
 
     from os import getenv
@@ -62,8 +61,7 @@ async def start_daily(
 ) -> None:
     """
     Collect everything needed to start a daily meeting and start a new one
-
-    :param channel_id: Slack channel id
+        :param channel_id: Slack channel id
     """
 
     from src.db import Database
@@ -93,8 +91,7 @@ async def start_daily(
     ) -> None:
         """
         Checks user DND status by comparing next dnd start timestamp with time aware datetime on the machine
-
-        :param user_id: Slack user id
+            :param user_id: Slack user id
         """
 
         user_next_dnd_start = (
@@ -158,8 +155,7 @@ async def start_daily(
     ) -> None:
         """
         Wrapper for async setting necessary field in database and deleting old answers if still present
-
-        :param user_id: Slack user id
+            :param user_id: Slack user id
         """
 
         # Set user daily status & delete user's old idx
@@ -178,8 +174,7 @@ async def start_daily(
     ) -> None:
         """
         Wrapper for async posting the first question
-
-        :param user_id: Slack user id
+            :param user_id: Slack user id
         """
 
         # Get channel_id

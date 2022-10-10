@@ -3,7 +3,6 @@ async def im_matcher(
 ) -> bool:
     """
     WS matcher for DMs
-
     :param message: message object from WS
     :return: True if DM else False
     """
@@ -18,9 +17,8 @@ async def thread_matcher(
 ) -> bool:
     """
     WS matcher for messages in threads
-
-    :param message: message object from WS
-    :return: True if thread else False
+        :param message: message object from WS
+        :return: True if thread else False
     """
 
     if (

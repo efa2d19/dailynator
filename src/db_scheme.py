@@ -6,8 +6,8 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
-class Channels(Base):
-    __tablename__ = "channels"
+class Channels(Base):  # noqa
+    __tablename__ = "channels"  # noqa
 
     channel_id = Column(
         "channel_id",
@@ -38,8 +38,8 @@ class Channels(Base):
     )
 
 
-class Users(Base):
-    __tablename__ = "users"
+class Users(Base):  # noqa
+    __tablename__ = "users"  # noqa
 
     user_id = Column(
         "user_id",
@@ -71,8 +71,8 @@ class Users(Base):
     )
 
 
-class Questions(Base):
-    __tablename__ = "questions"
+class Questions(Base):  # noqa
+    __tablename__ = "questions"  # noqa
 
     id = Column(
         "id",
@@ -93,8 +93,8 @@ class Questions(Base):
     )
 
 
-class Answers(Base):
-    __tablename__ = "answers"
+class Answers(Base):  # noqa
+    __tablename__ = "answers"  # noqa
 
     id = Column(
         "id",
@@ -121,8 +121,8 @@ class Answers(Base):
     )
 
 
-class Daily(Base):
-    __tablename__ = "daily"
+class Daily(Base):  # noqa
+    __tablename__ = "daily"  # noqa
 
     thread_ts = Column(
         "thread_ts",

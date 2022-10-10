@@ -17,11 +17,10 @@ def report_attachment_block(
 ) -> BlockAttachment:
     """
     Attachment unit to be sent as a report in the channel
-
-    :param header_text: Question text (no markdown)
-    :param body_text: Answer text (has markdown)
-    :param color: Color of the strip on the left side of the block
-    :return: Report block unit
+        :param header_text: Question text (no markdown)
+        :param body_text: Answer text (has markdown)
+        :param color: Color of the strip on the left side of the block
+        :return: Report block unit
     """
 
     return BlockAttachment(
@@ -46,11 +45,10 @@ def start_daily_block(
 ) -> Sequence[Block]:
     """
     Set of blocks to be sent to users on daily start
-
-    :param header_text: Greetings above divider
-    :param body_text: Something inspirational (yup, daily is hard, cheer 'em up)
-    :param first_question: First question from question list
-    :return: Blocks to be sent on daily start
+        :param header_text: Greetings above divider
+        :param body_text: Something inspirational (yup, daily is hard, cheer 'em up)
+        :param first_question: First question from question list
+        :return: Blocks to be sent on daily start
     """
 
     return [
@@ -82,11 +80,10 @@ def end_daily_block(
 ) -> Sequence[Block]:
     """
     Set of blocks to be sent on daily end (all questions ended)
-
-    :param start_body_text: Show 'em your gratitude here and tag 'em
-    :param end_body_text: Something inspirational again (they have all day ahead)
-    :param footer_text: Where to find a report (add chanel link here)
-    :return: Blocks to be sent on daily end
+        :param start_body_text: Show 'em your gratitude here and tag 'em
+        :param end_body_text: Something inspirational again (they have all day ahead)
+        :param footer_text: Where to find a report (add chanel link here)
+        :return: Blocks to be sent on daily end
     """
 
     return [
@@ -116,9 +113,8 @@ def question_list_block(
 ) -> Sequence[Block]:
     """
     Blocks constructor for get questions command
-
-    :param question_list: List of all question for the channel
-    :return: List of blocks w/ questions
+        :param question_list: List of all question for the channel
+        :return: List of blocks w/ questions
     """
 
     field_list = list()
@@ -148,10 +144,9 @@ def error_block(
 ) -> Sequence[Block]:
     """
     Make it look beautiful at least when error occurs
-
-    :param header_text: Error summary
-    :param body_text: Error main message (Optional)
-    :return: Error block
+        :param header_text: Error summary
+        :param body_text: Error main message (Optional)
+        :return: Error block
     """
 
     blocks = [
@@ -181,10 +176,9 @@ def success_block(
 ) -> Sequence[Block]:
     """
     Block to be shown on success execution
-
-    :param header_text: Success summary
-    :param body_text: Success main message (optional)
-    :return: Success block
+        :param header_text: Success summary
+        :param body_text: Success main message (optional)
+        :return: Success block
     """
 
     blocks = [

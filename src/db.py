@@ -7,21 +7,20 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncConnec
 from src.db_scheme import *
 
 
-class Borg:
-    _shared_state: dict[str, str] = {}
+class Database:
+    """
+    Database class w/ all async calls to database
+    """
 
-    def __init__(self) -> None:
-        self.__dict__ = self._shared_state
-
-
-class Database(Borg):
     engine: AsyncEngine
+    _shared_state: dict[str, str] = {}
 
     def __init__(
             self,
             engine: Optional[AsyncEngine] = None,
     ) -> None:
-        super().__init__()
+        self.__dict__ = self._shared_state
+
         if engine:
             self.engine = engine
         else:
@@ -69,12 +68,11 @@ class Database(Borg):
     ) -> None:
         """
         Creates or updates user entity
-
-        :param user_id: Slack user id
-        :param daily_status: Has daily started for the user or not
-        :param q_idx: Current question of the user (Default: 0; if daily has started: 1)
-        :param main_channel_id: User's daily channel (user can't be in multiple daily channels)
-        :param real_name: User's real name
+            :param user_id: Slack user id
+            :param daily_status: Has daily started for the user or not
+            :param q_idx: Current question of the user (Default: 0; if daily has started: 1)
+            :param main_channel_id: User's daily channel (user can't be in multiple daily channels)
+            :param real_name: User's real name
         """
 
         async with self.engine.begin() as con:
@@ -107,9 +105,8 @@ class Database(Borg):
     ) -> Optional[bool]:
         """
         Get current daily status by user_id
-
-        :param user_id: Slack user id
-        :return: Has daily started or not as a bool
+            :param user_id: Slack user id
+            :return: Has daily started or not as a bool
         """
 
         async with self.engine.connect() as con:
@@ -134,9 +131,8 @@ class Database(Borg):
     ) -> str:
         """
         Get main_channel_id by user_id
-
-        :param user_id: Slack user id
-        :return: Channel id of user's main channel
+            :param user_id: Slack user id
+            :return: Channel id of user's main channel
         """
 
         async with self.engine.connect() as con:
@@ -161,9 +157,8 @@ class Database(Borg):
     ) -> int:
         """
         Get user's current question index by user_id
-
-        :param user_id: Slack user id
-        :return: Question index as an int
+            :param user_id: Slack user id
+            :return: Question index as an int
         """
 
         async with self.engine.connect() as con:
@@ -188,9 +183,8 @@ class Database(Borg):
     ) -> list[dict[str, str]]:
         """
         Get joined questions & answers on user_id
-
-        :param user_id: Slack user id
-        :return: List w/ question and answer as a dict
+            :param user_id: Slack user id
+            :return: List w/ question and answer as a dict
         """
 
         async with self.engine.connect() as con:
@@ -228,8 +222,7 @@ class Database(Borg):
     ) -> None:
         """
         Delete all answers by user_id
-
-        :param user_id: Slack user id
+            :param user_id: Slack user id
         """
 
         async with self.engine.begin() as con:
@@ -252,10 +245,9 @@ class Database(Borg):
     ) -> None:
         """
         Write down user answer
-
-        :param user_id: Slack user id
-        :param question_id: Question id (for JOINs)
-        :param answer: User answer
+            :param user_id: Slack user id
+            :param question_id: Question id (for JOINs)
+            :param answer: User answer
         """
 
         async with self.engine.begin() as con:
@@ -530,10 +522,9 @@ class Database(Borg):
     ) -> None:
         """
         Update cron for the specified channel
-
-        :param channel_id: Slack channel id
-        :param cron: Daily meeting cron
-        :param cron_tz: User's tz info
+            :param channel_id: Slack channel id
+            :param cron: Daily meeting cron
+            :param cron_tz: User's tz info
         """
 
         async with self.engine.begin() as con:
@@ -581,8 +572,7 @@ class Database(Borg):
     ) -> None:
         """
         Reset user's daily status and q_idx to default
-
-        :param user_id: Slack user id
+            :param user_id: Slack user id
         """
 
         async with self.engine.begin() as con:
@@ -606,9 +596,8 @@ class Database(Borg):
     ) -> None:
         """
         Set user's daily status and q_idx to starting daily values
-
-        :param user_id: Slack user id
-        :param q_idx: Index of current question
+            :param user_id: Slack user id
+            :param q_idx: Index of current question
         """
 
         async with self.engine.begin() as con:
@@ -631,9 +620,8 @@ class Database(Borg):
     ) -> tuple[Optional[str], int]:
         """
         Get first question from the database
-
-        :param channel_id: Slack channel id
-        :return: First question from the database as a string
+            :param channel_id: Slack channel id
+            :return: First question from the database as a string
         """
 
         async with self.engine.connect() as con:
@@ -700,9 +688,8 @@ class Database(Borg):
     ) -> tuple[str, str]:
         """
         Get cron and team_id by the channel_id (for skipping cron)
-
-        :param channel_id: Slack channel id
-        :return: Set of cron and team_id
+            :param channel_id: Slack channel id
+            :return: Set of cron and team_id
         """
 
         async with self.engine.connect() as con:
@@ -734,9 +721,8 @@ class Database(Borg):
     ) -> None:
         """
         Write ts and user_id to daily database
-
-        :param ts: Message ts
-        :param user_id: Slack user id
+            :param ts: Message ts
+            :param user_id: Slack user id
         """
 
         async with self.engine.begin() as con:
@@ -756,9 +742,8 @@ class Database(Borg):
     ) -> Optional[str]:
         """
         Get thread ts and delete entry if user was found
-
-        :param thread_ts: Thread timestamp (used instead of id in Slack API)
-        :return: Slack user id if thread was found else None
+            :param thread_ts: Thread timestamp (used instead of id in Slack API)
+            :return: Slack user id if thread was found else None
         """
 
         async with self.engine.begin() as con:
