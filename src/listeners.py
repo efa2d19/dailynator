@@ -895,10 +895,11 @@ async def skip_daily_listener(
     ):
         return
 
+    from zoneinfo import ZoneInfo
     from src.utils import skip_cron
 
-    # Skip next cron
-    await skip_cron(
+    # Skip next cron and receive next fire time
+    cron_trigger_next_fire_time = await skip_cron(
         channel_id=body["channel_id"],
     )
 
@@ -908,7 +909,9 @@ async def skip_daily_listener(
         text=":white_check_mark: Daily was skipped",
         blocks=success_block(
             header_text="Next daily was successfully skipped",
-            body_text=f"<@{body['user_id']}> skipped next daily",
+            body_text=
+            f"<@{body['user_id']}> skipped next daily\n"
+            f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=ZoneInfo(key='UTC')).ctime()}* `UTC+0`",
         ),
     )
 

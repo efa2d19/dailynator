@@ -1,5 +1,7 @@
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from slack_sdk.web.async_client import AsyncWebClient
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
 
 from src.db import Database
 from src.block_kit import error_block
@@ -75,7 +77,7 @@ async def start_cron(
 
 async def skip_cron(
         channel_id: str,
-) -> None:
+) -> datetime:
     """
     Skip next daily trigger time for specified channel
 
@@ -83,7 +85,6 @@ async def skip_cron(
     """
 
     from functools import partial
-    from apscheduler.triggers.cron import CronTrigger
     from apscheduler.job import Job
     from main import scheduler, app
     from src.report import start_daily
@@ -136,6 +137,8 @@ async def skip_cron(
     # Start Async scheduler
     if not scheduler.state:
         scheduler.start()
+
+    return cron_trigger_next_fire_time
 
 
 async def is_dm_in_command(
