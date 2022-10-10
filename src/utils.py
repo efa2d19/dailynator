@@ -300,7 +300,7 @@ async def notify_not_subscribed(
         user=user_id,
         blocks=error_block(
             header_text="Channel is not subscribed",
-            body_text="User thi command to subscribe `/channel_append`",
+            body_text="User this command to subscribe `/channel_append`",
         ),
     )
 

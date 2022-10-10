@@ -71,9 +71,9 @@ async def channel_append_listener(
         # Post a message on success
         await client.chat_postEphemeral(
             channel=body["channel_id"],
-            text=":white_check_mark: All members was successfully parsed",
+            text=":white_check_mark: All members has been successfully parsed",
             blocks=success_block(
-                header_text="All members was successfully parsed",
+                header_text="All members has been successfully parsed",
             ),
             user=body["user_id"],
         )
