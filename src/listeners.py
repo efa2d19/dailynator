@@ -586,6 +586,9 @@ async def cron_listener(
     ):
         return
 
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+
     # Validate user input
     try:
         from apscheduler.triggers.cron import CronTrigger
@@ -594,8 +597,19 @@ async def cron_listener(
         if not body["text"]:
             raise ValueError
 
+        user_tz = (
+            await app.client.users_info(
+                user=body["user_id"],
+            )
+        )["user"]["tz"]
+
+        user_tz_info = ZoneInfo(key=user_tz)
+
         # Validate specified cron
-        CronTrigger().from_crontab(body["text"])
+        cron_trigger = CronTrigger().from_crontab(
+            expr=body["text"],
+            timezone=user_tz_info,
+        )
     except ValueError:
         # Notify user about invalid cron
         await client.chat_postEphemeral(
@@ -609,12 +623,6 @@ async def cron_listener(
         )
         return
 
-    user_tz = (
-        await app.client.users_info(
-            user=body["user_id"],
-        )
-    )["user"]["tz"]
-
     # Set specified cron to current channel
     await db.update_cron_by_channel_id(
         channel_id=body["channel_id"],
@@ -627,12 +635,19 @@ async def cron_listener(
     # Update CronTrigger in scheduler
     await start_cron()
 
+    # Get next trigger time from CronTrigger
+    cron_trigger_next_fire_time = cron_trigger.get_next_fire_time(
+        previous_fire_time=datetime.now().astimezone(),
+        now=datetime.now().astimezone(),
+    )
+
     # Post notification on success
     await client.chat_postEphemeral(
         channel=body["channel_id"],
         text=":white_check_mark: Cron was updated",
         blocks=success_block(
             header_text="Cron was updated",
+            body_text=f":fire: Next fire: *{cron_trigger_next_fire_time.astimezone(tz=user_tz_info).ctime()}*",
         ),
         user=body["user_id"],
     )
