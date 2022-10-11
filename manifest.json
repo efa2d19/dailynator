@@ -12,50 +12,56 @@
         "slash_commands": [
             {
                 "command": "/channel_append",
-                "description": "Add current channel to daily bot (Only visible to you)",
-                "usage_hint": "Can't be used in DMs",
+                "description": "Add current channel to daily bot",
+                "usage_hint": "[Can't be used in DMs] (Only visible to you)",
                 "should_escape": false
             },
             {
                 "command": "/channel_pop",
-                "description": "Remove current channel from daily bot (Only visible to you)",
-                "usage_hint": "Can't be used in DMs",
+                "description": "Remove current channel from daily bot",
+                "usage_hint": "[Can't be used in DMs] (Only visible to you)",
                 "should_escape": false
             },
             {
                 "command": "/skip_daily",
-                "description": "Skip closest daily (Will post message in the channel)",
-                "usage_hint": "Can't be used in DMs",
+                "description": "Skip closest daily",
+                "usage_hint": "[Can't be used in DMs] (Will post message in the channel)",
                 "should_escape": false
             },
             {
                 "command": "/cron",
-                "description": "Specify daily meetings schedule (Only visible to you)",
-                "usage_hint": "0 10 * * mon-fri (E.g. mon-fri at 10 AM your timezone)",
+                "description": "Specify daily meetings schedule",
+                "usage_hint": "0 10 * * mon-fri [E.g. mon-fri at 10 AM your timezone] (Only visible to you)",
                 "should_escape": false
             },
             {
                 "command": "/questions",
-                "description": "Get the list of daily questions (Only visible to you)",
-                "usage_hint": "Can't be used in DMs",
+                "description": "Get the list of daily questions",
+                "usage_hint": "[Can't be used in DMs] (Only visible to you)",
                 "should_escape": false
             },
             {
                 "command": "/refresh_users",
-                "description": "Force refresh users in this channel, if you met unexpected behavior (Only visible to you)",
-                "usage_hint": "Can't be used in DMs",
+                "description": "Force refresh users in this channel, if you met unexpected behavior",
+                "usage_hint": "[Can't be used in DMs] (Only visible to you)",
                 "should_escape": false
             },
             {
                 "command": "/question_append",
-                "description": "Add a question to the daily bot (Only visible to you)",
-                "usage_hint": "What was you doing yesterday? (Doesn't support mrkdwn)",
+                "description": "Add a question to the daily bot",
+                "usage_hint": "What's up? [Doesn't support mrkdwn] (Only visible to you)",
                 "should_escape": true
             },
             {
                 "command": "/question_pop",
-                "description": "Removes the question from the daily bot (Only visible to you)",
-                "usage_hint": "<question_index> (E.g. 1)",
+                "description": "Removes the question from the daily bot",
+                "usage_hint": "<question_index> [E.g. 1] (Only visible to you)",
+                "should_escape": false
+            },
+            {
+                "command": "/help",
+                "description": "Shows some useful information about bot usage",
+                "usage_hint": "(Only visible to you)",
                 "should_escape": false
             }
         ]
