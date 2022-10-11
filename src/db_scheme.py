@@ -128,7 +128,7 @@ class Daily(Base):  # noqa
 
     thread_ts = Column(
         "thread_ts",
-        String(length=16),
+        String(length=30),
         primary_key=True,
     )
 
