@@ -192,7 +192,8 @@ async def start_daily(
             text=":robot_face: Daily has started",
             blocks=start_daily_block(
                 header_text=f"Hey, <@{user_id}>! :sun_with_face: ",
-                body_text="*Daily time has come* :melting_face: ",
+                body_text="*Daily time has come* :melting_face:\n"
+                          ":information_desk_person::skin-tone-2: _If you are first timer - use `/help`_",
                 first_question=first_question,
             ),
         )

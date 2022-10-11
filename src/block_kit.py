@@ -110,34 +110,37 @@ def end_daily_block(
     ]
 
 
-def question_list_block(
-        question_list: list[str, str],
+def list_block(
+        header_text: str,
+        list_to_be_parsed: list[any],
 ) -> Sequence[Block]:
     """
     Blocks constructor for get questions command
-        :param question_list: List of all question for the channel
-        :return: List of blocks w/ questions
+        :param header_text: Header of the list block
+        :param list_to_be_parsed: List w/ all objects to be parsed
+        :return: List of blocks w/ parsed data
     """
 
-    field_list = list()
+    from src.utils import int_to_slack_emoji
+
+    blocks = [
+        HeaderBlock(
+            text=header_text,
+        ),
+        DividerBlock(),
+    ]
 
     # Add indexes (for pop command)
-    for idx, question in enumerate(question_list, start=1):
-        field_list.append(
-            MarkdownTextObject(
-                text=f"{idx}.\t{question}",
+    for idx, data in enumerate(list_to_be_parsed, start=1):
+        blocks.append(
+            SectionBlock(
+                text=MarkdownTextObject(
+                    text=int_to_slack_emoji(idx) + "\t" + data,
+                )
             )
         )
 
-    return [
-        HeaderBlock(
-            text="Question list",
-        ),
-        DividerBlock(),
-        SectionBlock(
-            fields=field_list,
-        ),
-    ]
+    return blocks
 
 
 def error_block(

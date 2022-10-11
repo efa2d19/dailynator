@@ -1,4 +1,5 @@
 """Util functions for all kind of situations"""
+from __future__ import annotations
 
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 from slack_sdk.web.async_client import AsyncWebClient
@@ -9,6 +10,7 @@ from src.db import Database
 from src.block_kit import error_block
 
 default_colors = ["#e8aeb7", "#b8e1ff", "#3c7a89", "#82aba1", "#f4d06f"]
+skip_question_list = ["-", "nil", "none", "null"]
 
 
 async def parse_emoji_list(
@@ -315,7 +317,7 @@ async def is_not_subscribed(
         :param db_connection: Database connection instance
         :param channel_id: Slack channel id
         :param user_id: Slack user id
-        :return: True if channel is subscribed else False and post ephemeral message
+        :return: True if channel isn't subscribed else False and post ephemeral message
     """
     if not await db_connection.check_channel_exist(
             channel_id=channel_id,
@@ -329,3 +331,22 @@ async def is_not_subscribed(
 
         return True
     return False
+
+
+def int_to_slack_emoji(
+        num: int,
+) -> str | list[str]:
+    """
+    Converts an integer to a slack emojis form
+        :param num: The integer to convert
+        :return: The emoji form of specified integer
+    """
+
+    emoji_list = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+
+    words = []
+
+    for unit in str(num):
+        words.append(":" + emoji_list[int(unit)] + ":")
+
+    return "".join(words)

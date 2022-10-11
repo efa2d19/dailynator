@@ -2,7 +2,8 @@
 
 from slack_bolt.context.async_context import AsyncAck, AsyncWebClient
 
-from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name, is_not_subscribed
+from src.utils import is_dm_in_command, all_non_bot_members, create_multiple_user_with_real_name
+from src.utils import is_not_subscribed, skip_question_list
 from src.block_kit import success_block, error_block
 from src.matchers import im_matcher, thread_matcher
 from src.db import Database
@@ -81,6 +82,7 @@ async def channel_append_listener(
             text=":white_check_mark: All members has been successfully parsed",
             blocks=success_block(
                 header_text="All members has been successfully parsed",
+                body_text=":information_desk_person::skin-tone-2: _If you need help - use `/help`_",
             ),
             user=body["user_id"],
         )
@@ -92,6 +94,7 @@ async def channel_append_listener(
         text=":white_check_mark: Channel already has been added",
         blocks=success_block(
             header_text="Channel already has been added",
+            body_text=":information_desk_person::skin-tone-2: _If you need help - use `/help`_",
         ),
         user=body["user_id"],
     )
@@ -105,7 +108,7 @@ async def channel_pop_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for channel_pop command in channel bot was added to \n
     Exits if command was send in DM or channel has been already unsubscribed
@@ -179,7 +182,7 @@ async def join_channel_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
-):
+) -> None:
     """
     Listen for user's joining subscribed channels \n
     """
@@ -240,7 +243,7 @@ async def leave_channel_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
-):
+) -> None:
     """
     Listen for user's leaving subscribed channels \n
     """
@@ -295,7 +298,7 @@ async def refresh_users_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for command refresh_users in subscribed channels \n
     Exits if command was send in DM
@@ -362,7 +365,7 @@ async def questions_listener(
         ack: AsyncAck,
         body: dict,
         client: AsyncWebClient,
-):
+) -> None:
     """
     Listen for command questions in subscribed channels \n
     Exits if command was send in DM
@@ -407,13 +410,14 @@ async def questions_listener(
         )
         return
 
-    from src.block_kit import question_list_block
+    from src.block_kit import list_block
 
     # Send user list to user
     await client.chat_postEphemeral(
         text="Question list has arrived",
-        blocks=question_list_block(
-            question_list=question_list,
+        blocks=list_block(
+            header_text="Question list",
+            list_to_be_parsed=question_list,
         ),
         channel=body["channel_id"],
         user=body["user_id"],
@@ -428,7 +432,7 @@ async def question_append_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for command question_append in subscribed channels \n
     Exits if command was send in DM
@@ -496,7 +500,7 @@ async def question_pop_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for command question_pop in subscribed channels \n
     Exits if command was send in DM
@@ -583,7 +587,7 @@ async def cron_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for command cron in subscribed channels \n
     Exits if command was send in DM
@@ -692,7 +696,7 @@ async def im_listener(
         ack: AsyncAck,
         client: AsyncWebClient,
         message: dict,
-):
+) -> None:
     """
     Listen for DMs if daily status is True for the user \n
     """
@@ -824,7 +828,7 @@ async def im_listener(
 
         for idx, user_set in enumerate(user_answers):
             # Check for skips in user answers
-            if str(user_set["answer"]).lower() in ("-", "nil", "none", "null"):
+            if str(user_set["answer"]).lower() in skip_question_list:
                 continue
 
             # Create attachments
@@ -898,7 +902,7 @@ async def skip_daily_listener(
         body: dict,
         client: AsyncWebClient,
         logger: Logger,
-):
+) -> None:
     """
     Listen for command skip_daily in subscribed channels \n
     Exits if command was send in DM
@@ -960,7 +964,7 @@ async def thread_listener(
         ack: AsyncAck,
         client: AsyncWebClient,
         message: dict,
-):
+) -> None:
     """
     Listen for messages in threads in subscriber channels \n
     """
@@ -983,3 +987,90 @@ async def thread_listener(
             thread_ts=message["thread_ts"],
             mrkdwn=True,
         )
+
+
+@app.command(
+    "/help",
+)
+async def help_listener(
+        ack: AsyncAck,
+        body: dict,
+        client: AsyncWebClient,
+) -> None:
+    """
+    Listen for help command in a channel
+    """
+
+    await ack()
+
+    from src.block_kit import list_block
+
+    # Different answer in DMs
+    if body["channel_name"] == "directmessage":  # noqa
+        conversation_info = await client.conversations_open(
+            users=body["user_id"],
+        )
+
+        user_help = [
+            "*You will receive a message when daily starts*",
+            "*Questions will be sent one by one*",
+            "*Take your time, you do not have time restrictions to answer a question*",
+        ]
+
+        # Send general info
+        await client.chat_postMessage(
+            channel=conversation_info["channel"]["id"],
+            text="Help message has arrived",
+            blocks=list_block(
+                header_text="How to use the bot",
+                list_to_be_parsed=user_help,
+            ),
+        )
+
+        # If there is empty skip_question_list users cant skip messages
+        if skip_question_list:
+            # Send skip_question_list
+            await client.chat_postMessage(
+                channel=conversation_info["channel"]["id"],
+                text="Help message has arrived",
+                blocks=list_block(
+                    header_text="To skip a question send one from the list",
+                    list_to_be_parsed=[f"`{skip_answer}`" for skip_answer in skip_question_list],
+                ),
+            )
+
+        return
+
+    db = Database()
+
+    # Check if not subscribed
+    if await is_not_subscribed(
+            client=client,
+            db_connection=db,
+            channel_id=body["channel_id"],
+            user_id=body["user_id"],
+    ):
+        return
+
+    # All commands w/ brief comments
+    all_commands = [
+        "`/channel_append`\n> *Subscribe channel for daily meetings*",
+        "`/channel_pop`\n> *Unsubscribe channel from daily meetings*",
+        "`/questions`\n> *Get list of all questions for the channel*",
+        "`/question_append`\n> *Add channel to channel's question list*",
+        "`/question_pop`\n> *Removes channel from channel's question list*",
+        "`/cron`\n> *Set or change channel's <https://crontab.guru|cron> schedule*",
+        "`/skip_daily`\n> *Postpones closest daily meeting to the next fire time of the <https://crontab.guru|cron>*",
+        "`/refresh_users`\n> *Force refresh all members of the channel*\n> (in case of unexpected behaviour)"
+    ]
+
+    # Send ephemeral to user w/ all commands
+    await client.chat_postEphemeral(
+        channel=body["channel_id"],
+        user=body["user_id"],
+        text="Help message has arrived",
+        blocks=list_block(
+            header_text="Administrative commands",
+            list_to_be_parsed=all_commands,
+        )
+    )
