@@ -9,21 +9,19 @@ services:
       POSTGRES_DB: daily
     volumes:
       - pg_volume:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     restart: unless-stopped
 
   daily_bot:
     container_name: bot_container
-    build:
-      dockerfile: docker/bot.Dockerfile
+    build: .
     environment:
       DATABASE_HOST: postgres
       SLACK_BOT_TOKEN: xoxb-
       SLACK_APP_TOKEN: xapp-
-      USE_AVATARS: True
-      DEVELOPMENT: False
+      USE_AVATARS: False
+      DEVELOPMENT: True
     volumes:
       - bot_volume:/dailynator
     links:

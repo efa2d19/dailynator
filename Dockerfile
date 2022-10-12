@@ -32,10 +32,10 @@ RUN python3 -m venv $POETRY_VENV \
 ENV PATH="${PATH}:${POETRY_VENV}/bin"
 
 # Copy dependency files and install
-COPY ./poetry.lock pyproject.toml /dailynator/
+COPY poetry.lock pyproject.toml /dailynator/
 RUN poetry config virtualenvs.create false \
   && poetry install $(test "$DEVELOPMENT" == False && echo "--no-dev") --no-interaction --no-ansi
 
 # Copy remaining files and start
 COPY . /dailynator
-CMD [ "poetry", "run", "python", "main.py" ]
+CMD [ "./entrypoint.sh" ]

@@ -1,8 +1,6 @@
 """Database schemes"""
 
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.dialects.postgresql.asyncpg import AsyncpgBoolean, AsyncpgInteger
-
+from sqlalchemy import Column, String, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -51,14 +49,14 @@ class Users(Base):  # noqa
 
     daily_status = Column(
         "daily_status",
-        AsyncpgBoolean(),
+        Boolean(),
         nullable=False,
         default=False,
     )
 
     q_idx = Column(
         "q_idx",
-        AsyncpgInteger(),
+        Integer(),
     )
 
     main_channel_id = Column(
@@ -78,7 +76,7 @@ class Questions(Base):  # noqa
 
     id = Column(
         "id",
-        AsyncpgInteger(),
+        Integer(),
         primary_key=True,
     )
 
@@ -100,7 +98,7 @@ class Answers(Base):  # noqa
 
     id = Column(
         "id",
-        AsyncpgInteger(),
+        Integer(),
         primary_key=True,
     )
 
@@ -118,6 +116,28 @@ class Answers(Base):  # noqa
 
     answer = Column(
         "answer",
+        String(),
+        nullable=False,
+    )
+
+
+class Attachments(Base):  # noqa
+    __tablename__ = "attachments"  # noqa
+
+    id = Column(
+        "id",
+        Integer(),
+        primary_key=True,
+    )
+
+    answer_id = Column(
+        "answer_id",
+        ForeignKey("answers.id"),
+        nullable=False,
+    )
+
+    attachment = Column(
+        "attachment",
         String(),
         nullable=False,
     )
