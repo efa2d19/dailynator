@@ -1,12 +1,16 @@
 """Database connection async calls"""
 
+from asyncio import current_task
 from typing import Optional
+
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_scoped_session
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, AsyncResult
 
 from sqlalchemy import delete, update, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncConnection, AsyncResult
 
-from src.db_scheme import *
+from src.models import *
 
 
 class Database:
@@ -15,11 +19,13 @@ class Database:
     """
 
     engine: AsyncEngine
+    session: async_scoped_session
     _shared_state: dict[str, str] = {}
 
     def __init__(
             self,
             engine: Optional[AsyncEngine] = None,
+            session: Optional[async_scoped_session] = None,
     ) -> None:
         self.__dict__ = self._shared_state
 
@@ -28,6 +34,12 @@ class Database:
         else:
             if not hasattr(self, "engine"):
                 self.engine = None  # noqa
+
+        if session:
+            self.session = session
+        else:
+            if not hasattr(self, "session"):
+                self.session = None  # noqa
 
     async def connect(self) -> None:
         """
@@ -40,6 +52,17 @@ class Database:
                 echo=True,
             )
 
+        if self.session is None:
+            sessionmaker_ = sessionmaker(
+                bind=self.engine,
+                class_=AsyncSession,
+            )
+
+            self.session = async_scoped_session(
+                session_factory=sessionmaker_,
+                scopefunc=current_task,
+            )
+
     async def delete_users_by_main_channel(
             self,
             channel_id: str,
@@ -50,15 +73,17 @@ class Database:
         :param channel_id: Users main_channel_id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 delete(Users)
                 .where(
                     Users.main_channel_id == channel_id
                 )
             )
+
+            await sess.commit()
 
     async def create_user(
             self,
@@ -77,10 +102,10 @@ class Database:
             :param real_name: User's real name
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 insert(Users)
                 .values(
                     user_id=user_id,
@@ -101,6 +126,8 @@ class Database:
                 )
             )
 
+            await sess.commit()
+
     async def get_user_status(
             self,
             user_id: str,
@@ -111,10 +138,10 @@ class Database:
             :return: Has daily started or not as a bool
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Users.daily_status
                 )
@@ -137,10 +164,10 @@ class Database:
             :return: Channel id of user's main channel
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Users.main_channel_id
                 )
@@ -163,10 +190,10 @@ class Database:
             :return: Question index as an int
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Users.q_idx
                 )
@@ -189,10 +216,10 @@ class Database:
             :return: List w/ question and answer as a dict
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Questions.body,
                     Answers.answer,
@@ -227,10 +254,10 @@ class Database:
             :param user_id: Slack user id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 delete(
                     Answers,
                 )
@@ -238,6 +265,8 @@ class Database:
                     Answers.user_id == user_id,
                 )
             )
+
+            await sess.commit()
 
     async def set_user_answer(
             self,
@@ -252,10 +281,10 @@ class Database:
             :param answer: User answer
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 insert(Answers)
                 .values(
                     user_id=user_id,
@@ -263,6 +292,8 @@ class Database:
                     answer=answer,
                 )
             )
+
+            await sess.commit()
 
     async def delete_user(
             self,
@@ -274,15 +305,17 @@ class Database:
         :param user_id: Slack user id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 delete(Users)
                 .where(
                     Users.user_id == user_id
                 )
             )
+
+            await sess.commit()
 
     async def check_channel_exist(
             self,
@@ -294,10 +327,10 @@ class Database:
         :return: Return True if channel exist else False
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(Channels.channel_id)
                 .filter_by(
                     channel_id=channel_id,
@@ -319,10 +352,10 @@ class Database:
         :return: List of all questions w/ ids (primary key)
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Questions.body,
                     Questions.id,
@@ -356,10 +389,10 @@ class Database:
         :param channel_name: Slack channel name
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 insert(Channels)
                 .values(
                     channel_id=channel_id,
@@ -367,6 +400,8 @@ class Database:
                     channel_name=channel_name,
                 )
             )
+
+            await sess.commit()
 
     async def add_question(
             self,
@@ -380,16 +415,18 @@ class Database:
         :param question: Question body
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 insert(Questions)
                 .values(
                     channel_id=channel_id,
                     body=question,
                 )
             )
+
+            await sess.commit()
 
     async def delete_question(
             self,
@@ -405,10 +442,10 @@ class Database:
 
         from itertools import chain
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(Questions.id)
                 .where(
                     Questions.channel_id == channel_id
@@ -426,7 +463,7 @@ class Database:
             if question_rowid > len(rowid_list):
                 return
 
-            await con.execute(
+            await sess.execute(
                 delete(
                     Questions
                 )
@@ -435,6 +472,8 @@ class Database:
                     Questions.channel_id == channel_id,
                 )
             )
+
+            await sess.commit()
 
     async def delete_channel(
             self,
@@ -446,15 +485,17 @@ class Database:
         :param channel_id: Slack channel id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 delete(Channels)
                 .where(
                     Channels.channel_id == channel_id,
                 )
             )
+
+            await sess.commit()
 
     async def get_all_users_by_channel_id(
             self,
@@ -469,10 +510,10 @@ class Database:
 
         from itertools import chain
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Users.user_id
                 )
@@ -497,10 +538,10 @@ class Database:
         :return: Sequence of channel_id, team_id & cron in sets
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Channels.channel_id,
                     Channels.team_id,
@@ -529,10 +570,10 @@ class Database:
             :param cron_tz: User's tz info
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 update(Channels)
                 .where(
                     Channels.channel_id == channel_id,
@@ -542,6 +583,8 @@ class Database:
                     cron_tz=cron_tz,
                 )
             )
+
+            await sess.commit()
 
     async def update_user_q_idx(
             self,
@@ -555,10 +598,10 @@ class Database:
         :param q_idx: User's current question id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 update(Users)
                 .where(
                     Users.user_id == user_id,
@@ -567,6 +610,8 @@ class Database:
                     q_idx=q_idx,
                 )
             )
+
+            await sess.commit()
 
     async def reset_user_daily_status(
             self,
@@ -577,10 +622,10 @@ class Database:
             :param user_id: Slack user id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 update(Users)
                 .where(
                     Users.user_id == user_id,
@@ -590,6 +635,8 @@ class Database:
                     daily_status=False,
                 )
             )
+
+            await sess.commit()
 
     async def start_user_daily_status(
             self,
@@ -602,10 +649,10 @@ class Database:
             :param q_idx: Index of current question
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 update(Users)
                 .where(
                     Users.user_id == user_id,
@@ -615,6 +662,8 @@ class Database:
                     daily_status=True,
                 )
             )
+
+            await sess.commit()
 
     async def get_first_question(
             self,
@@ -626,10 +675,10 @@ class Database:
             :return: First question from the database as a string
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Questions.body,
                     Questions.id,
@@ -662,10 +711,10 @@ class Database:
         :return: Set w/ channel name & team_id
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Channels.channel_name,
                     Channels.team_id,
@@ -694,10 +743,10 @@ class Database:
             :return: Set of cron and team_id
         """
 
-        async with self.engine.connect() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(
                     Channels.cron,
                     Channels.team_id,
@@ -727,16 +776,18 @@ class Database:
             :param user_id: Slack user id
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            await con.execute(
+            await sess.execute(
                 insert(Daily)
                 .values(
                     thread_ts=ts,
                     user_id=user_id,
                 )
             )
+
+            await sess.commit()
 
     async def get_user_id_by_thread_ts(
             self,
@@ -748,10 +799,10 @@ class Database:
             :return: Slack user id if thread was found else None
         """
 
-        async with self.engine.begin() as con:
-            con: AsyncConnection
+        async with self.session() as sess:
+            sess: AsyncSession
 
-            s: AsyncResult = await con.execute(
+            s: AsyncResult = await sess.execute(
                 select(Daily.user_id)
                 .where(
                     Daily.thread_ts == thread_ts,
@@ -762,12 +813,14 @@ class Database:
 
             # Delete entry if found one
             if user_id:
-                await con.execute(
+                await sess.execute(
                     delete(Daily)
                     .where(
                         Daily.thread_ts == thread_ts,
                     )
                 )
+
+                await sess.commit()
 
         # Return None if nothing was found
         return user_id[0] if user_id else None  # noqa
