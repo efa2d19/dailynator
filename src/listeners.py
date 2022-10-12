@@ -954,39 +954,39 @@ async def skip_daily_listener(
     )
 
 
-@app.event(
-    "message",
-    matchers=[
-        thread_matcher,
-    ],
-)
-async def thread_listener(
-        ack: AsyncAck,
-        client: AsyncWebClient,
-        message: dict,
-) -> None:
-    """
-    Listen for messages in threads in subscriber channels \n
-    """
-
-    await ack()
-
-    db = Database()
-
-    # Check if thread is report (None if not a report)
-    # If report - the entry will be deleted
-    user_id = await db.get_user_id_by_thread_ts(
-        thread_ts=message["thread_ts"],
-    )
-
-    if user_id:
-        # Notify
-        await client.chat_postMessage(
-            text=f"Hey, <@{user_id}>.\nYou was mentioned in the thread",
-            channel=message["channel"],
-            thread_ts=message["thread_ts"],
-            mrkdwn=True,
-        )
+# @app.event(
+#     "message",
+#     matchers=[
+#         thread_matcher,
+#     ],
+# )
+# async def thread_listener(
+#         ack: AsyncAck,
+#         client: AsyncWebClient,
+#         message: dict,
+# ) -> None:
+#     """
+#     Listen for messages in threads in subscriber channels \n
+#     """
+#
+#     await ack()
+#
+#     db = Database()
+#
+#     # Check if thread is report (None if not a report)
+#     # If report - the entry will be deleted
+#     user_id = await db.get_user_id_by_thread_ts(
+#         thread_ts=message["thread_ts"],
+#     )
+#
+#     if user_id:
+#         # Notify
+#         await client.chat_postMessage(
+#             text=f"Hey, <@{user_id}>.\nYou was mentioned in the thread",
+#             channel=message["channel"],
+#             thread_ts=message["thread_ts"],
+#             mrkdwn=True,
+#         )
 
 
 @app.command(
